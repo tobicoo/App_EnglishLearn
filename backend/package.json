@@ -1,0 +1,13 @@
+{
+  "name": "english-backend",
+  "version": "1.0.0",
+  "description": "Mock backend cho app English (json-server). Sẽ thay bằng real backend sau.",
+  "scripts": {
+    "start": "npx json-server db.json --port 3000 --host 0.0.0.0",
+    "dev": "npx json-server db.json --port 3000 --host 0.0.0.0 --watch"
+  },
+  "devDependencies": {
+    "json-server": "^1.0.0-beta.15"
+  },
+  "private": true
+}

@@ -1,43 +1,39 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
-node_modules/
+# Dependencies
+frontend/node_modules/
+backend/node_modules/
 
 # Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
+frontend/.expo/
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+*.orig.*
 
 # Metro
-.metro-health-check*
+frontend/.metro-health-check*
 
-# debug
+# Debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
 
 # macOS
 .DS_Store
-*.pem
 
-# local env files
-.env*.local
+# Windows
+Thumbs.db
 
-# typescript
-*.tsbuildinfo
+# Lockfiles (nếu chỉ dùng npm)
+# frontend/package-lock.json
+# backend/package-lock.json
 
-app-example
+# Environment
+.env
+.env.local
+.env.production
 
-# generated native folders
-/ios
-/android
+# IDE
+.vscode/
+.idea/

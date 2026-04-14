@@ -1,0 +1,1023 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Demo",
+      "email": "demo@demo.com",
+      "password": "123123",
+      "avatar": "🦊",
+      "level": 5,
+      "xp": 1370,
+      "streak": 20,
+      "gems": 100,
+      "hearts": 5,
+      "completedUnitIds": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Test",
+      "email": "demo@test.com",
+      "password": "123123",
+      "avatar": "🐱",
+      "level": 1,
+      "xp": 40,
+      "streak": 0,
+      "gems": 10,
+      "hearts": 5,
+      "completedUnitIds": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "3",
+      "name": "NgocAnh",
+      "email": "ngocanh@test.com",
+      "password": "123123",
+      "avatar": "🐼",
+      "level": 4,
+      "xp": 950,
+      "streak": 12,
+      "gems": 60,
+      "hearts": 5,
+      "completedUnitIds": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "4",
+      "name": "VanHung",
+      "email": "vanhung@test.com",
+      "password": "123123",
+      "avatar": "🦁",
+      "level": 2,
+      "xp": 480,
+      "streak": 3,
+      "gems": 20,
+      "hearts": 4,
+      "completedUnitIds": [
+        1
+      ]
+    },
+    {
+      "id": "5",
+      "name": "ThanhTung",
+      "email": "thanhtung@test.com",
+      "password": "123123",
+      "avatar": "🐸",
+      "level": 6,
+      "xp": 1520,
+      "streak": 25,
+      "gems": 120,
+      "hearts": 5,
+      "completedUnitIds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "id": "1",
+      "title": "PHẦN 1",
+      "subTitle": "Chào hỏi cơ bản"
+    },
+    {
+      "id": "2",
+      "title": "PHẦN 2",
+      "subTitle": "Giới thiệu bản thân"
+    },
+    {
+      "id": "3",
+      "title": "PHẦN 3",
+      "subTitle": "Mua sắm tại cửa hàng"
+    },
+    {
+      "id": "4",
+      "title": "PHẦN 4",
+      "subTitle": "Đồ ăn & Thức uống"
+    },
+    {
+      "id": "5",
+      "title": "PHẦN 5",
+      "subTitle": "Gia đình & Bạn bè"
+    }
+  ],
+  "units": [
+    {
+      "id": "1",
+      "sectionId": 1,
+      "type": "done",
+      "order": 1
+    },
+    {
+      "id": "2",
+      "sectionId": 1,
+      "type": "done",
+      "order": 2
+    },
+    {
+      "id": "3",
+      "sectionId": 1,
+      "type": "done",
+      "order": 3
+    },
+    {
+      "id": "4",
+      "sectionId": 1,
+      "type": "done",
+      "order": 4
+    },
+    {
+      "id": "5",
+      "sectionId": 1,
+      "type": "todo",
+      "order": 5
+    },
+    {
+      "id": "6",
+      "sectionId": 2,
+      "type": "locked",
+      "order": 1
+    },
+    {
+      "id": "7",
+      "sectionId": 2,
+      "type": "locked",
+      "order": 2
+    },
+    {
+      "id": "8",
+      "sectionId": 2,
+      "type": "locked",
+      "order": 3
+    },
+    {
+      "id": "9",
+      "sectionId": 2,
+      "type": "locked",
+      "order": 4
+    },
+    {
+      "id": "10",
+      "sectionId": 2,
+      "type": "locked",
+      "order": 5
+    },
+    {
+      "id": "11",
+      "sectionId": 3,
+      "type": "locked",
+      "order": 1
+    },
+    {
+      "id": "12",
+      "sectionId": 3,
+      "type": "locked",
+      "order": 2
+    },
+    {
+      "id": "13",
+      "sectionId": 3,
+      "type": "locked",
+      "order": 3
+    },
+    {
+      "id": "14",
+      "sectionId": 3,
+      "type": "locked",
+      "order": 4
+    },
+    {
+      "id": "15",
+      "sectionId": 3,
+      "type": "locked",
+      "order": 5
+    },
+    {
+      "id": "16",
+      "sectionId": 4,
+      "type": "locked",
+      "order": 1
+    },
+    {
+      "id": "17",
+      "sectionId": 4,
+      "type": "locked",
+      "order": 2
+    },
+    {
+      "id": "18",
+      "sectionId": 4,
+      "type": "locked",
+      "order": 3
+    },
+    {
+      "id": "19",
+      "sectionId": 4,
+      "type": "locked",
+      "order": 4
+    },
+    {
+      "id": "20",
+      "sectionId": 4,
+      "type": "locked",
+      "order": 5
+    },
+    {
+      "id": "21",
+      "sectionId": 5,
+      "type": "locked",
+      "order": 1
+    },
+    {
+      "id": "22",
+      "sectionId": 5,
+      "type": "locked",
+      "order": 2
+    },
+    {
+      "id": "23",
+      "sectionId": 5,
+      "type": "locked",
+      "order": 3
+    },
+    {
+      "id": "24",
+      "sectionId": 5,
+      "type": "locked",
+      "order": 4
+    },
+    {
+      "id": "25",
+      "sectionId": 5,
+      "type": "locked",
+      "order": 5
+    }
+  ],
+  "flashcards": [
+    {
+      "id": "1",
+      "unitId": 1,
+      "word": "Hello",
+      "phonetic": "/həˈloʊ/",
+      "meaning": "Xin chào",
+      "imageUrl": "https://images.unsplash.com/photo-1566753323558-f4e0952af115?w=400"
+    },
+    {
+      "id": "2",
+      "unitId": 1,
+      "word": "Goodbye",
+      "phonetic": "/ɡʊdˈbaɪ/",
+      "meaning": "Tạm biệt",
+      "imageUrl": "https://images.unsplash.com/photo-1527689368864-3a821dbccc34?w=400"
+    },
+    {
+      "id": "3",
+      "unitId": 2,
+      "word": "Thank you",
+      "phonetic": "/θæŋk juː/",
+      "meaning": "Cảm ơn",
+      "imageUrl": "https://images.unsplash.com/photo-1542596594-649edbc13630?w=400"
+    },
+    {
+      "id": "4",
+      "unitId": 2,
+      "word": "Sorry",
+      "phonetic": "/ˈsɒr.i/",
+      "meaning": "Xin lỗi",
+      "imageUrl": "https://images.unsplash.com/photo-1516534775068-ba3e7458af70?w=400"
+    },
+    {
+      "id": "5",
+      "unitId": 3,
+      "word": "Please",
+      "phonetic": "/pliːz/",
+      "meaning": "Làm ơn",
+      "imageUrl": "https://images.unsplash.com/photo-1531747056862-dc31da43dbcd?w=400"
+    },
+    {
+      "id": "6",
+      "unitId": 3,
+      "word": "Yes",
+      "phonetic": "/jes/",
+      "meaning": "Vâng / Có",
+      "imageUrl": "https://images.unsplash.com/photo-1504270997636-07ddfbd48945?w=400"
+    },
+    {
+      "id": "7",
+      "unitId": 4,
+      "word": "No",
+      "phonetic": "/noʊ/",
+      "meaning": "Không",
+      "imageUrl": "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400"
+    },
+    {
+      "id": "8",
+      "unitId": 5,
+      "word": "Good morning",
+      "phonetic": "/ɡʊd ˈmɔːr.nɪŋ/",
+      "meaning": "Chào buổi sáng",
+      "imageUrl": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=400"
+    },
+    {
+      "id": "9",
+      "unitId": 6,
+      "word": "Name",
+      "phonetic": "/neɪm/",
+      "meaning": "Tên",
+      "imageUrl": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400"
+    },
+    {
+      "id": "10",
+      "unitId": 6,
+      "word": "Friend",
+      "phonetic": "/frend/",
+      "meaning": "Bạn bè",
+      "imageUrl": "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400"
+    },
+    {
+      "id": "11",
+      "unitId": 7,
+      "word": "Age",
+      "phonetic": "/eɪdʒ/",
+      "meaning": "Tuổi",
+      "imageUrl": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=400"
+    },
+    {
+      "id": "12",
+      "unitId": 8,
+      "word": "Country",
+      "phonetic": "/ˈkʌn.tri/",
+      "meaning": "Đất nước",
+      "imageUrl": "https://images.unsplash.com/photo-1526778548025-fa2f459cd5ce?w=400"
+    },
+    {
+      "id": "13",
+      "unitId": 11,
+      "word": "Apple",
+      "phonetic": "/ˈæp.əl/",
+      "meaning": "Quả táo",
+      "imageUrl": "https://images.unsplash.com/photo-1669999207738-fcdb7103a6f3?w=400"
+    },
+    {
+      "id": "14",
+      "unitId": 11,
+      "word": "Book",
+      "phonetic": "/bʊk/",
+      "meaning": "Quyển sách",
+      "imageUrl": "https://images.unsplash.com/photo-1637962638310-e6787f7eb324?w=400"
+    },
+    {
+      "id": "15",
+      "unitId": 12,
+      "word": "Money",
+      "phonetic": "/ˈmʌn.i/",
+      "meaning": "Tiền",
+      "imageUrl": "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=400"
+    },
+    {
+      "id": "16",
+      "unitId": 16,
+      "word": "Water",
+      "phonetic": "/ˈwɔː.tər/",
+      "meaning": "Nước",
+      "imageUrl": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=400"
+    },
+    {
+      "id": "17",
+      "unitId": 16,
+      "word": "Coffee",
+      "phonetic": "/ˈkɒf.i/",
+      "meaning": "Cà phê",
+      "imageUrl": "https://images.unsplash.com/photo-1645771321012-919d2e7aa858?w=400"
+    },
+    {
+      "id": "18",
+      "unitId": 17,
+      "word": "Rice",
+      "phonetic": "/raɪs/",
+      "meaning": "Cơm / Gạo",
+      "imageUrl": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400"
+    },
+    {
+      "id": "19",
+      "unitId": 18,
+      "word": "Chicken",
+      "phonetic": "/ˈtʃɪk.ɪn/",
+      "meaning": "Gà",
+      "imageUrl": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400"
+    },
+    {
+      "id": "20",
+      "unitId": 21,
+      "word": "Mother",
+      "phonetic": "/ˈmʌð.ər/",
+      "meaning": "Mẹ",
+      "imageUrl": "https://images.unsplash.com/photo-1531983412531-1f49a365ffed?w=400"
+    },
+    {
+      "id": "21",
+      "unitId": 21,
+      "word": "Father",
+      "phonetic": "/ˈfɑː.ðər/",
+      "meaning": "Bố",
+      "imageUrl": "https://images.unsplash.com/photo-1463453091185-61582044d556?w=400"
+    },
+    {
+      "id": "22",
+      "unitId": 22,
+      "word": "Brother",
+      "phonetic": "/ˈbrʌð.ər/",
+      "meaning": "Anh/em trai",
+      "imageUrl": "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400"
+    },
+    {
+      "id": "23",
+      "unitId": 23,
+      "word": "Sister",
+      "phonetic": "/ˈsɪs.tər/",
+      "meaning": "Chị/em gái",
+      "imageUrl": "https://images.unsplash.com/photo-1519741497674-611481863552?w=400"
+    },
+    {
+      "id": "24",
+      "unitId": 24,
+      "word": "Dog",
+      "phonetic": "/dɔːɡ/",
+      "meaning": "Con chó",
+      "imageUrl": "https://images.unsplash.com/photo-1632351459705-22a52c7a3d1d?w=400"
+    },
+    {
+      "id": "25",
+      "unitId": 25,
+      "word": "Cat",
+      "phonetic": "/kæt/",
+      "meaning": "Con mèo",
+      "imageUrl": "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400"
+    }
+  ],
+  "quizzes": [
+    {
+      "id": "1",
+      "unitId": 1,
+      "type": "multiple_choice",
+      "question": "\"Hello\" nghĩa là gì?",
+      "options": [
+        "Tạm biệt",
+        "Xin chào",
+        "Cảm ơn",
+        "Xin lỗi"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "2",
+      "unitId": 1,
+      "type": "translate",
+      "question": "Dịch: \"Goodbye\"",
+      "answer": "Tạm biệt|Tam biet"
+    },
+    {
+      "id": "3",
+      "unitId": 1,
+      "type": "fill_blank",
+      "question": "_____, my name is Tunga.",
+      "options": [
+        "Goodbye",
+        "Hello",
+        "Sorry",
+        "Please"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "4",
+      "unitId": 1,
+      "type": "multiple_choice",
+      "question": "Từ nào có nghĩa là \"Tạm biệt\"?",
+      "options": [
+        "Hello",
+        "Sorry",
+        "Goodbye",
+        "Thanks"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "5",
+      "unitId": 2,
+      "type": "multiple_choice",
+      "question": "\"Thank you\" nghĩa là gì?",
+      "options": [
+        "Xin lỗi",
+        "Tạm biệt",
+        "Làm ơn",
+        "Cảm ơn"
+      ],
+      "answer": 3
+    },
+    {
+      "id": "6",
+      "unitId": 2,
+      "type": "translate",
+      "question": "Dịch: \"Sorry\"",
+      "answer": "Xin lỗi|Xin loi"
+    },
+    {
+      "id": "7",
+      "unitId": 2,
+      "type": "fill_blank",
+      "question": "_____, I didn't mean to do that.",
+      "options": [
+        "Hello",
+        "Thanks",
+        "Sorry",
+        "Yes"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "8",
+      "unitId": 2,
+      "type": "multiple_choice",
+      "question": "Chọn từ đúng: Xin lỗi = ...",
+      "options": [
+        "Thank you",
+        "Please",
+        "Sorry",
+        "No"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "9",
+      "unitId": 3,
+      "type": "multiple_choice",
+      "question": "\"Please\" nghĩa là gì?",
+      "options": [
+        "Có",
+        "Làm ơn",
+        "Không",
+        "Chào"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "10",
+      "unitId": 3,
+      "type": "translate",
+      "question": "Dịch: \"Yes\"",
+      "answer": "Vâng|Có|Đúng|Đúng rồi"
+    },
+    {
+      "id": "11",
+      "unitId": 3,
+      "type": "fill_blank",
+      "question": "Can you _____ help me?",
+      "options": [
+        "no",
+        "yes",
+        "please",
+        "sorry"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "12",
+      "unitId": 3,
+      "type": "multiple_choice",
+      "question": "\"No\" nghĩa là gì?",
+      "options": [
+        "Có",
+        "Không",
+        "Vâng",
+        "Làm ơn"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "13",
+      "unitId": 4,
+      "type": "multiple_choice",
+      "question": "\"Good morning\" nghĩa là gì?",
+      "options": [
+        "Chào buổi tối",
+        "Chào buổi sáng",
+        "Tạm biệt",
+        "Xin lỗi"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "14",
+      "unitId": 4,
+      "type": "translate",
+      "question": "Dịch: \"No\"",
+      "answer": "Không|Khong"
+    },
+    {
+      "id": "15",
+      "unitId": 4,
+      "type": "fill_blank",
+      "question": "Good _____, teacher!",
+      "options": [
+        "night",
+        "morning",
+        "bye",
+        "sorry"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "16",
+      "unitId": 5,
+      "type": "multiple_choice",
+      "question": "\"Good morning\" dùng khi nào?",
+      "options": [
+        "Buổi tối",
+        "Buổi sáng",
+        "Buổi trưa",
+        "Khi ngủ"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "17",
+      "unitId": 5,
+      "type": "translate",
+      "question": "Dịch: \"Good morning\"",
+      "answer": "Chào buổi sáng|Chao buoi sang"
+    },
+    {
+      "id": "18",
+      "unitId": 5,
+      "type": "fill_blank",
+      "question": "_____ morning, how are you?",
+      "options": [
+        "Bad",
+        "Good",
+        "Sorry",
+        "No"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "19",
+      "unitId": 6,
+      "type": "multiple_choice",
+      "question": "\"Name\" nghĩa là gì?",
+      "options": [
+        "Tuổi",
+        "Tên",
+        "Bạn",
+        "Nước"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "20",
+      "unitId": 6,
+      "type": "translate",
+      "question": "Dịch: \"Friend\"",
+      "answer": "Bạn bè|Ban be|Bạn"
+    },
+    {
+      "id": "21",
+      "unitId": 6,
+      "type": "fill_blank",
+      "question": "My _____ is Tunga.",
+      "options": [
+        "friend",
+        "age",
+        "name",
+        "country"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "22",
+      "unitId": 7,
+      "type": "multiple_choice",
+      "question": "\"Age\" nghĩa là gì?",
+      "options": [
+        "Tên",
+        "Quốc gia",
+        "Tuổi",
+        "Bạn"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "23",
+      "unitId": 7,
+      "type": "translate",
+      "question": "Dịch: \"Age\"",
+      "answer": "Tuổi|Tuoi"
+    },
+    {
+      "id": "24",
+      "unitId": 8,
+      "type": "multiple_choice",
+      "question": "\"Country\" nghĩa là gì?",
+      "options": [
+        "Thành phố",
+        "Đất nước",
+        "Làng",
+        "Đường"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "25",
+      "unitId": 8,
+      "type": "translate",
+      "question": "Dịch: \"Country\"",
+      "answer": "Đất nước|Quốc gia|Dat nuoc|Nước"
+    },
+    {
+      "id": "26",
+      "unitId": 11,
+      "type": "multiple_choice",
+      "question": "\"Apple\" nghĩa là gì?",
+      "options": [
+        "Quả cam",
+        "Quả táo",
+        "Quả chuối",
+        "Quả nho"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "27",
+      "unitId": 11,
+      "type": "translate",
+      "question": "Dịch: \"Book\"",
+      "answer": "Quyển sách|Sách|Cuốn sách"
+    },
+    {
+      "id": "28",
+      "unitId": 11,
+      "type": "fill_blank",
+      "question": "I want to buy an _____.",
+      "options": [
+        "book",
+        "apple",
+        "money",
+        "water"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "29",
+      "unitId": 12,
+      "type": "multiple_choice",
+      "question": "\"Money\" nghĩa là gì?",
+      "options": [
+        "Sách",
+        "Tiền",
+        "Táo",
+        "Nước"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "30",
+      "unitId": 12,
+      "type": "translate",
+      "question": "Dịch: \"Money\"",
+      "answer": "Tiền|Tien"
+    },
+    {
+      "id": "31",
+      "unitId": 16,
+      "type": "multiple_choice",
+      "question": "\"Water\" nghĩa là gì?",
+      "options": [
+        "Cà phê",
+        "Trà",
+        "Nước",
+        "Sữa"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "32",
+      "unitId": 16,
+      "type": "translate",
+      "question": "Dịch: \"Coffee\"",
+      "answer": "Cà phê|Ca phe|Cafe"
+    },
+    {
+      "id": "33",
+      "unitId": 16,
+      "type": "fill_blank",
+      "question": "I want a cup of _____.",
+      "options": [
+        "rice",
+        "chicken",
+        "coffee",
+        "apple"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "34",
+      "unitId": 17,
+      "type": "multiple_choice",
+      "question": "\"Rice\" nghĩa là gì?",
+      "options": [
+        "Gà",
+        "Cơm",
+        "Cá",
+        "Thịt"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "35",
+      "unitId": 17,
+      "type": "translate",
+      "question": "Dịch: \"Rice\"",
+      "answer": "Cơm|Gạo|Com|Gao"
+    },
+    {
+      "id": "36",
+      "unitId": 18,
+      "type": "multiple_choice",
+      "question": "\"Chicken\" nghĩa là gì?",
+      "options": [
+        "Cá",
+        "Bò",
+        "Gà",
+        "Lợn"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "37",
+      "unitId": 18,
+      "type": "translate",
+      "question": "Dịch: \"Chicken\"",
+      "answer": "Gà|Con gà|Thịt gà"
+    },
+    {
+      "id": "38",
+      "unitId": 21,
+      "type": "multiple_choice",
+      "question": "\"Mother\" nghĩa là gì?",
+      "options": [
+        "Bố",
+        "Mẹ",
+        "Anh",
+        "Chị"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "39",
+      "unitId": 21,
+      "type": "translate",
+      "question": "Dịch: \"Father\"",
+      "answer": "Bố|Ba|Bố cha"
+    },
+    {
+      "id": "40",
+      "unitId": 21,
+      "type": "fill_blank",
+      "question": "My _____ cooks dinner every day.",
+      "options": [
+        "brother",
+        "sister",
+        "mother",
+        "dog"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "41",
+      "unitId": 22,
+      "type": "multiple_choice",
+      "question": "\"Brother\" nghĩa là gì?",
+      "options": [
+        "Chị gái",
+        "Anh/em trai",
+        "Bố",
+        "Mẹ"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "42",
+      "unitId": 23,
+      "type": "multiple_choice",
+      "question": "\"Sister\" nghĩa là gì?",
+      "options": [
+        "Anh trai",
+        "Em trai",
+        "Chị/em gái",
+        "Bố"
+      ],
+      "answer": 2
+    },
+    {
+      "id": "43",
+      "unitId": 24,
+      "type": "multiple_choice",
+      "question": "\"Dog\" nghĩa là gì?",
+      "options": [
+        "Con mèo",
+        "Con chó",
+        "Con chim",
+        "Con cá"
+      ],
+      "answer": 1
+    },
+    {
+      "id": "44",
+      "unitId": 25,
+      "type": "multiple_choice",
+      "question": "\"Cat\" nghĩa là gì?",
+      "options": [
+        "Con chó",
+        "Con cá",
+        "Con mèo",
+        "Con gà"
+      ],
+      "answer": 2
+    }
+  ],
+  "leaderboard": [
+    {
+      "id": "101",
+      "name": "HoangNam",
+      "avatar": "🐻",
+      "xp": 980
+    },
+    {
+      "id": "102",
+      "name": "ThuyLinh",
+      "avatar": "🦋",
+      "xp": 890
+    },
+    {
+      "id": "103",
+      "name": "DucMinh",
+      "avatar": "🐯",
+      "xp": 750
+    },
+    {
+      "id": "104",
+      "name": "PhuongThao",
+      "avatar": "🌸",
+      "xp": 610
+    },
+    {
+      "id": "105",
+      "name": "MinhKhoi",
+      "xp": 540,
+      "avatar": "🦊"
+    },
+    {
+      "id": "106",
+      "name": "BichNgoc",
+      "xp": 490,
+      "avatar": "🐰"
+    },
+    {
+      "id": "107",
+      "name": "VietAnh",
+      "xp": 380,
+      "avatar": "🦁"
+    },
+    {
+      "id": "108",
+      "name": "QuynhChi",
+      "xp": 310,
+      "avatar": "🦄"
+    },
+    {
+      "id": "109",
+      "name": "ManhCuong",
+      "xp": 250,
+      "avatar": "🐘"
+    },
+    {
+      "id": "110",
+      "name": "ThuGiang",
+      "xp": 180,
+      "avatar": "🦢"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
