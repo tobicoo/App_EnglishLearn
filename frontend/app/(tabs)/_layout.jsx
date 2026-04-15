@@ -1,7 +1,7 @@
-import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
+import { Tabs } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const { user } = useAuth();
@@ -23,6 +23,7 @@ export default function TabLayout() {
         tabBarStyle: styles.tabBar,
       }}>
         <Tabs.Screen name="home" options={{ title: 'Học tập', tabBarIcon: () => <Text style={{ fontSize: 20 }}>📚</Text> }} />
+        <Tabs.Screen name="english-pro" options={{ title: 'English Pro', tabBarIcon: () => <Text style={{ fontSize: 20 }}>⭐</Text> }} />
         <Tabs.Screen name="leaderboard" options={{ title: 'Xếp hạng', tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏆</Text> }} />
         <Tabs.Screen name="profile" options={{ title: 'Hồ sơ', tabBarIcon: () => <Text style={{ fontSize: 20 }}>👤</Text> }} />
       </Tabs>
