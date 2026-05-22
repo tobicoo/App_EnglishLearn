@@ -1,5 +1,29 @@
 const adminService = require("../services/adminService");
 
+async function createSection(req, res, next) {
+  try {
+    res.json({ section: await adminService.createSection(req.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createUnit(req, res, next) {
+  try {
+    res.json({ unit: await adminService.createUnit(req.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createExercise(req, res, next) {
+  try {
+    res.json({ exercise: await adminService.createExercise(req.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getHeartbeatSetting(req, res, next) {
   try {
     res.json(await adminService.getHeartbeatSetting());
@@ -56,6 +80,33 @@ async function users(req, res, next) {
   }
 }
 
+async function deleteSection(req, res, next) {
+  try {
+    await adminService.deleteSection(req.params.id);
+    res.json({ deleted: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteUnit(req, res, next) {
+  try {
+    await adminService.deleteUnit(req.params.id);
+    res.json({ deleted: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteExercise(req, res, next) {
+  try {
+    await adminService.deleteExercise(req.params.id);
+    res.json({ deleted: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function resetPassword(req, res, next) {
   try {
     res.json({ user: await adminService.resetUserPassword(req.params.id, req.body || {}) });
@@ -74,6 +125,12 @@ async function resetProgress(req, res, next) {
 
 module.exports = {
   content,
+  createExercise,
+  createSection,
+  createUnit,
+  deleteExercise,
+  deleteSection,
+  deleteUnit,
   getHeartbeatSetting,
   resetPassword,
   resetProgress,

@@ -5,8 +5,11 @@ const ApiError = require("../utils/apiError");
 const { applyLazyHeartRefill, buildHeartMetadata } = require("./heartService");
 
 const FIRST_COMPLETION_GEM_REWARD = 10;
+const XP_PER_LEVEL = 200;
 const GMT_PLUS_7_OFFSET_MS = 7 * 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const calculateLevel = (totalXp) => Math.floor(Math.max(totalXp, 0) / XP_PER_LEVEL) + 1;
 
 const getGmtPlus7DayWindow = (date = new Date()) => {
   const shiftedTime = date.getTime() + GMT_PLUS_7_OFFSET_MS;
@@ -271,7 +274,7 @@ async function completeUnit(userId, unitId, body) {
 
     const user = await tx.user.findUnique({
       where: { id: userId },
-      select: { id: true, hearts: true, maxHearts: true, heartRefilledAt: true, totalXp: true, gems: true, streak: true },
+      select: { id: true, hearts: true, maxHearts: true, heartRefilledAt: true, totalXp: true, level: true, gems: true, streak: true },
     });
     if (!user) {
       throw new ApiError(401, "INVALID_TOKEN", "Token user no longer exists");
@@ -291,6 +294,8 @@ async function completeUnit(userId, unitId, body) {
 
     let xpAwarded = 0;
     let gemsAwarded = 0;
+    const previousLevel = user.level;
+    let currentLevel = previousLevel;
     if (existingProgress?.status !== "COMPLETED") {
       try {
         await tx.xpLedger.create({
@@ -305,14 +310,16 @@ async function completeUnit(userId, unitId, body) {
         });
         xpAwarded = computedXp;
         gemsAwarded = FIRST_COMPLETION_GEM_REWARD;
+        currentLevel = calculateLevel(user.totalXp + computedXp);
         await tx.user.update({
           where: { id: userId },
-          data: { totalXp: { increment: computedXp }, gems: { increment: gemsAwarded } },
+          data: { totalXp: { increment: computedXp }, level: currentLevel, gems: { increment: gemsAwarded } },
         });
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
           xpAwarded = 0;
           gemsAwarded = 0;
+          currentLevel = previousLevel;
         } else {
           throw error;
         }
@@ -333,7 +340,25 @@ async function completeUnit(userId, unitId, body) {
     const streakIncremented = unitAttempt.status !== "COMPLETED" && !completedAttemptToday;
 
     if (streakIncremented) {
-      await tx.user.update({ where: { id: userId }, data: { streak: { increment: 1 } } });
+      const yesterdayStart = new Date(todayStart.getTime() - ONE_DAY_MS);
+      const lastCompletedAttempt = await tx.unitAttempt.findFirst({
+        where: {
+          userId,
+          status: "COMPLETED",
+          completedAt: { lt: todayStart },
+        },
+        orderBy: [{ completedAt: "desc" }, { id: "desc" }],
+        select: { completedAt: true },
+      });
+      const hadActivityYesterday = lastCompletedAttempt
+        && lastCompletedAttempt.completedAt >= yesterdayStart
+        && lastCompletedAttempt.completedAt < todayStart;
+
+      if (hadActivityYesterday) {
+        await tx.user.update({ where: { id: userId }, data: { streak: { increment: 1 } } });
+      } else {
+        await tx.user.update({ where: { id: userId }, data: { streak: 1 } });
+      }
     }
 
     const updatedAttempt = await tx.unitAttempt.update({
@@ -370,7 +395,7 @@ async function completeUnit(userId, unitId, body) {
 
     const freshUser = await tx.user.findUnique({
       where: { id: userId },
-      select: { id: true, hearts: true, maxHearts: true, heartRefilledAt: true, totalXp: true, gems: true, streak: true },
+      select: { id: true, hearts: true, maxHearts: true, heartRefilledAt: true, totalXp: true, level: true, gems: true, streak: true },
     });
 
     return {
@@ -379,6 +404,9 @@ async function completeUnit(userId, unitId, body) {
       gemsAwarded,
       streakIncremented,
       totalXp: freshUser.totalXp,
+      previousLevel,
+      level: freshUser.level,
+      leveledUp: freshUser.level > previousLevel,
       gems: freshUser.gems,
       streak: freshUser.streak,
       ...buildHeartMetadata(freshUser, now),

@@ -318,6 +318,90 @@ export async function updateAdminExercise(exerciseId, data) {
   }
 }
 
+export async function createAdminSection(data) {
+  try {
+    const res = await apiJsonRequest('/api/admin/sections', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tạo section') };
+    const payload = await res.json();
+    return { data: payload?.section || null, error: payload?.section ? null : 'Không thể tạo section' };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tạo section' };
+  }
+}
+
+export async function createAdminUnit(data) {
+  try {
+    const res = await apiJsonRequest('/api/admin/units', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tạo unit') };
+    const payload = await res.json();
+    return { data: payload?.unit || null, error: payload?.unit ? null : 'Không thể tạo unit' };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tạo unit' };
+  }
+}
+
+export async function createAdminExercise(data) {
+  try {
+    const res = await apiJsonRequest('/api/admin/exercises', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tạo câu hỏi') };
+    const payload = await res.json();
+    return { data: payload?.exercise || null, error: payload?.exercise ? null : 'Không thể tạo câu hỏi' };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tạo câu hỏi' };
+  }
+}
+
+export async function deleteAdminSection(sectionId) {
+  try {
+    const res = await apiJsonRequest(`/api/admin/sections/${sectionId}`, {
+      method: 'DELETE',
+      requireAuth: true,
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể xóa section') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể xóa section' };
+  }
+}
+
+export async function deleteAdminUnit(unitId) {
+  try {
+    const res = await apiJsonRequest(`/api/admin/units/${unitId}`, {
+      method: 'DELETE',
+      requireAuth: true,
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể xóa unit') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể xóa unit' };
+  }
+}
+
+export async function deleteAdminExercise(exerciseId) {
+  try {
+    const res = await apiJsonRequest(`/api/admin/exercises/${exerciseId}`, {
+      method: 'DELETE',
+      requireAuth: true,
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể xóa câu hỏi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể xóa câu hỏi' };
+  }
+}
+
 export async function getAdminUsers() {
   try {
     const res = await apiRequest('/api/admin/users', { requireAuth: true });

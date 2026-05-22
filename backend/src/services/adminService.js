@@ -13,6 +13,9 @@ const BCRYPT_SALT_ROUNDS = 12;
 const SECTION_FIELDS = new Set(["title", "subtitle", "subTitle", "sortOrder", "isPublished"]);
 const UNIT_FIELDS = new Set(["sectionId", "title", "description", "kind", "sortOrder", "xpReward", "isPublished"]);
 const EXERCISE_FIELDS = new Set(["unitId", "type", "prompt", "answerText", "correctOptionId", "explanation", "sortOrder", "xpReward", "options", "matchingPairs"]);
+const EXERCISE_TYPES = new Set(["MULTIPLE_CHOICE", "FILL_BLANK", "MATCHING"]);
+const OPTION_BASED_EXERCISE_TYPES = new Set(["MULTIPLE_CHOICE"]);
+const DEFAULT_MATCHING_PROMPT = "Nối các cặp phù hợp";
 
 function parsePositiveInt(value, fieldName) {
   const parsed = Number(value);
@@ -80,6 +83,15 @@ function requireUpdateData(data) {
   return data;
 }
 
+function normalizeExerciseType(value) {
+  const type = String(value || "").toUpperCase();
+  if (!EXERCISE_TYPES.has(type)) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Exercise type is invalid");
+  }
+
+  return type;
+}
+
 function buildSectionUpdate(input) {
   ensureKnownFields(input, SECTION_FIELDS);
   const data = {};
@@ -132,11 +144,9 @@ function buildExerciseUpdate(input) {
   if (Object.prototype.hasOwnProperty.call(input, "sortOrder")) data.sortOrder = parsePositiveInt(input.sortOrder, "Sort order");
   if (Object.prototype.hasOwnProperty.call(input, "xpReward")) data.xpReward = parsePositiveInt(input.xpReward, "XP reward");
 
-  if (data.type && !["MULTIPLE_CHOICE", "FILL_BLANK", "MATCHING"].includes(data.type)) {
-    throw new ApiError(400, "VALIDATION_ERROR", "Exercise type is invalid");
-  }
+  if (data.type) normalizeExerciseType(data.type);
 
-  return requireUpdateData(data);
+  return data;
 }
 
 function parseOptionInputs(options) {
@@ -165,6 +175,146 @@ function parseMatchingPairInputs(pairs) {
     rightText: parseOptionalString(pair?.rightText, "Right text", { maxLength: 255 }),
     sortOrder: index + 1,
   }));
+}
+
+function parseRequiredString(value, fieldName, { maxLength, trim = true }) {
+  const parsed = trim ? String(value || "").trim() : String(value || "");
+  if (!parsed) {
+    throw new ApiError(400, "VALIDATION_ERROR", `${fieldName} is required`);
+  }
+  if (parsed.length > maxLength) {
+    throw new ApiError(400, "VALIDATION_ERROR", `${fieldName} is too long`);
+  }
+  return parsed;
+}
+
+async function createSection(input) {
+  const title = parseRequiredString(input?.title, "Title", { maxLength: 120 });
+  const subtitle = parseOptionalString(input?.subtitle, "Subtitle", { maxLength: 255, nullable: true });
+  const sortOrder = Number.isInteger(Number(input?.sortOrder)) && Number(input?.sortOrder) >= 1
+    ? Number(input.sortOrder)
+    : null;
+  const isPublished = typeof input?.isPublished === "boolean" ? input.isPublished : true;
+
+  const data = { title, subtitle, isPublished };
+  if (sortOrder) data.sortOrder = sortOrder;
+
+  return prisma.section.create({ data });
+}
+
+async function createUnit(input) {
+  const sectionId = parsePositiveInt(input?.sectionId, "Section id");
+  const title = parseOptionalString(input?.title, "Title", { maxLength: 160, nullable: true });
+  const description = parseOptionalString(input?.description, "Description", { maxLength: 65535, nullable: true, trim: false });
+  const kind = String(input?.kind || "LESSON").toUpperCase();
+  const sortOrder = Number.isInteger(Number(input?.sortOrder)) && Number(input?.sortOrder) >= 1
+    ? Number(input.sortOrder)
+    : null;
+  const xpReward = Number.isInteger(Number(input?.xpReward)) && Number(input?.xpReward) >= 1
+    ? Number(input.xpReward)
+    : 20;
+  const isPublished = typeof input?.isPublished === "boolean" ? input.isPublished : true;
+
+  if (!["LESSON", "REVIEW", "CHECKPOINT"].includes(kind)) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Unit kind is invalid");
+  }
+
+  const data = { sectionId, title, description, kind, xpReward, isPublished };
+  if (sortOrder) data.sortOrder = sortOrder;
+
+  return prisma.unit.create({ data });
+}
+
+async function createExercise(input) {
+  const unitId = parsePositiveInt(input?.unitId, "Unit id");
+  const type = normalizeExerciseType(input?.type);
+  const prompt = type === "MATCHING"
+    ? DEFAULT_MATCHING_PROMPT
+    : parseRequiredString(input?.prompt, "Prompt", { maxLength: 65535, trim: false });
+  const answerText = type === "MATCHING"
+    ? null
+    : parseOptionalString(input?.answerText, "Answer text", { maxLength: 65535, nullable: true, trim: false });
+  const explanation = parseOptionalString(input?.explanation, "Explanation", { maxLength: 65535, nullable: true, trim: false });
+  const sortOrder = Number.isInteger(Number(input?.sortOrder)) && Number(input?.sortOrder) >= 1
+    ? Number(input.sortOrder)
+    : null;
+  const xpReward = Number.isInteger(Number(input?.xpReward)) && Number(input?.xpReward) >= 1
+    ? Number(input.xpReward)
+    : 5;
+
+  const options = OPTION_BASED_EXERCISE_TYPES.has(type) ? parseOptionInputs(input?.options) : undefined;
+  const matchingPairs = type === "MATCHING" ? parseMatchingPairInputs(input?.matchingPairs) : undefined;
+  if (type === "MATCHING" && !matchingPairs) {
+    throw new ApiError(400, "VALIDATION_ERROR", "Matching exercises require at least one matching pair");
+  }
+
+  const data = { unitId, type, prompt, answerText, explanation, xpReward };
+  if (sortOrder) data.sortOrder = sortOrder;
+
+  return prisma.$transaction(async (tx) => {
+    const exercise = await tx.exercise.create({ data });
+
+    if (options) {
+      let correctOptionId = null;
+      for (const option of options) {
+        const savedOption = await tx.exerciseOption.create({
+          data: { exerciseId: exercise.id, text: option.text, sortOrder: option.sortOrder },
+        });
+        if (option.isCorrect) correctOptionId = savedOption.id;
+      }
+      if (!correctOptionId) {
+        throw new ApiError(400, "VALIDATION_ERROR", "One option must be marked correct");
+      }
+      await tx.exercise.update({ where: { id: exercise.id }, data: { correctOptionId } });
+    }
+
+    if (matchingPairs) {
+      for (const pair of matchingPairs) {
+        await tx.matchingPair.create({
+          data: { exerciseId: exercise.id, leftText: pair.leftText, rightText: pair.rightText, sortOrder: pair.sortOrder },
+        });
+      }
+    }
+
+    return tx.exercise.findUnique({
+      where: { id: exercise.id },
+      include: {
+        options: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+        matchingPairs: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
+      },
+    });
+  });
+}
+
+async function deleteSection(id) {
+  const sectionId = normalizeIdParam(id, "Section");
+  return prisma.$transaction(async (tx) => {
+    const section = await tx.section.findUnique({ where: { id: sectionId } });
+    if (!section) throw new ApiError(404, "SECTION_NOT_FOUND", "Section not found");
+    const units = await tx.unit.findMany({ where: { sectionId }, select: { id: true } });
+    for (const unit of units) {
+      await tx.unit.delete({ where: { id: unit.id } });
+    }
+    await tx.section.delete({ where: { id: sectionId } });
+  });
+}
+
+async function deleteUnit(id) {
+  const unitId = normalizeIdParam(id, "Unit");
+  return prisma.$transaction(async (tx) => {
+    const unit = await tx.unit.findUnique({ where: { id: unitId } });
+    if (!unit) throw new ApiError(404, "UNIT_NOT_FOUND", "Unit not found");
+    await tx.unit.delete({ where: { id: unitId } });
+  });
+}
+
+async function deleteExercise(id) {
+  const exerciseId = normalizeIdParam(id, "Exercise");
+  return prisma.$transaction(async (tx) => {
+    const exercise = await tx.exercise.findUnique({ where: { id: exerciseId } });
+    if (!exercise) throw new ApiError(404, "EXERCISE_NOT_FOUND", "Exercise not found");
+    await tx.exercise.delete({ where: { id: exerciseId } });
+  });
 }
 
 async function getHeartbeatSetting() {
@@ -221,18 +371,42 @@ async function updateUnit(id, input) {
 
 async function updateExercise(id, input) {
   const exerciseId = normalizeIdParam(id, "Exercise");
-  const options = parseOptionInputs(input?.options);
-  const matchingPairs = parseMatchingPairInputs(input?.matchingPairs);
   const data = buildExerciseUpdate(input || {});
   delete data.options;
   delete data.matchingPairs;
 
-  if (Object.keys(data).length === 0 && !options && !matchingPairs) {
-    throw new ApiError(400, "VALIDATION_ERROR", "At least one field is required");
-  }
-
   try {
     return await prisma.$transaction(async (tx) => {
+      const existingExercise = await tx.exercise.findUnique({ where: { id: exerciseId } });
+      if (!existingExercise) throw new ApiError(404, "EXERCISE_NOT_FOUND", "Exercise not found");
+
+      const targetType = data.type ? normalizeExerciseType(data.type) : existingExercise.type;
+      if (targetType === "MATCHING") {
+        data.prompt = DEFAULT_MATCHING_PROMPT;
+        data.answerText = null;
+      }
+      if (targetType === "MULTIPLE_CHOICE") {
+        data.answerText = null;
+      }
+      const options = OPTION_BASED_EXERCISE_TYPES.has(targetType) ? parseOptionInputs(input?.options) : undefined;
+      const matchingPairs = targetType === "MATCHING" ? parseMatchingPairInputs(input?.matchingPairs) : undefined;
+
+      if (targetType === "MATCHING" && Object.prototype.hasOwnProperty.call(input || {}, "options")) {
+        throw new ApiError(400, "VALIDATION_ERROR", "Matching exercises cannot include options");
+      }
+      if (OPTION_BASED_EXERCISE_TYPES.has(targetType) && Object.prototype.hasOwnProperty.call(input || {}, "matchingPairs")) {
+        throw new ApiError(400, "VALIDATION_ERROR", "Only matching exercises can include matching pairs");
+      }
+      if (targetType === "MATCHING" && !matchingPairs && existingExercise.type !== "MATCHING") {
+        throw new ApiError(400, "VALIDATION_ERROR", "Matching exercises require at least one matching pair");
+      }
+      if (OPTION_BASED_EXERCISE_TYPES.has(targetType) && !options && existingExercise.type === "MATCHING") {
+        throw new ApiError(400, "VALIDATION_ERROR", "Option-based exercises require options when converting from matching");
+      }
+      if (Object.keys(data).length === 0 && !options && !matchingPairs) {
+        throw new ApiError(400, "VALIDATION_ERROR", "At least one field is required");
+      }
+
       const exercise = await tx.exercise.update({
         where: { id: exerciseId },
         data,
@@ -242,7 +416,26 @@ async function updateExercise(id, input) {
         },
       });
 
+      if (targetType === "MATCHING") {
+        await tx.exercise.update({ where: { id: exerciseId }, data: { correctOptionId: null } });
+        await tx.exerciseOption.deleteMany({ where: { exerciseId } });
+      } else if (targetType === "FILL_BLANK") {
+        await tx.exercise.update({ where: { id: exerciseId }, data: { correctOptionId: null } });
+        await tx.exerciseOption.deleteMany({ where: { exerciseId } });
+        await tx.matchingPair.deleteMany({ where: { exerciseId } });
+      } else {
+        await tx.matchingPair.deleteMany({ where: { exerciseId } });
+      }
+
       if (options) {
+        const optionIds = options.map((option) => option.id).filter(Boolean);
+        if (optionIds.length > 0) {
+          const ownedOptions = await tx.exerciseOption.count({ where: { exerciseId, id: { in: optionIds } } });
+          if (ownedOptions !== optionIds.length) {
+            throw new ApiError(400, "VALIDATION_ERROR", "Options must belong to the exercise being updated");
+          }
+        }
+
         await tx.exercise.update({ where: { id: exerciseId }, data: { correctOptionId: null } });
         const keptOptionIds = [];
         let correctOptionId = null;
@@ -263,6 +456,14 @@ async function updateExercise(id, input) {
       }
 
       if (matchingPairs) {
+        const pairIds = matchingPairs.map((pair) => pair.id).filter(Boolean);
+        if (pairIds.length > 0) {
+          const ownedPairs = await tx.matchingPair.count({ where: { exerciseId, id: { in: pairIds } } });
+          if (ownedPairs !== pairIds.length) {
+            throw new ApiError(400, "VALIDATION_ERROR", "Matching pairs must belong to the exercise being updated");
+          }
+        }
+
         const keptPairIds = [];
         for (const pair of matchingPairs) {
           const savedPair = pair.id
@@ -344,6 +545,12 @@ async function resetUserProgress(id) {
 }
 
 module.exports = {
+  createExercise,
+  createSection,
+  createUnit,
+  deleteExercise,
+  deleteSection,
+  deleteUnit,
   getContent,
   getHeartbeatSetting,
   getUsers,

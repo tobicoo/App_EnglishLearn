@@ -1,5 +1,14 @@
+import AdminContent from '@/components/admin/AdminContent';
+import AdminSettings from '@/components/admin/AdminSettings';
+import AdminUsers from '@/components/admin/AdminUsers';
 import { useAuth } from '@/context/AuthContext';
 import {
+  createAdminExercise,
+  createAdminSection,
+  createAdminUnit,
+  deleteAdminExercise,
+  deleteAdminSection,
+  deleteAdminUnit,
   getAdminContent,
   getAdminHeartbeatSetting,
   getAdminUsers,
@@ -12,18 +21,8 @@ import {
 } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const tabs = [
@@ -33,22 +32,7 @@ const tabs = [
 ];
 
 const showValue = (value) => (value === null || value === undefined ? '' : String(value));
-
-function Field({ label, value, onChangeText, keyboardType = 'default', multiline = false }) {
-  return (
-    <View style={styles.fieldBlock}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={[styles.input, multiline && styles.multilineInput]}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        placeholderTextColor="#8a8f99"
-      />
-    </View>
-  );
-}
+const DEFAULT_MATCHING_PROMPT = 'Nối các cặp phù hợp';
 
 function AdminGuard({ children }) {
   const { user, isLoading, logout } = useAuth();
@@ -98,40 +82,32 @@ export default function AdminScreen() {
   const [heartbeatSeconds, setHeartbeatSeconds] = useState('120');
   const [sections, setSections] = useState([]);
   const [users, setUsers] = useState([]);
-  const [selectedSectionId, setSelectedSectionId] = useState(null);
-  const [selectedUnitId, setSelectedUnitId] = useState(null);
-  const [selectedExerciseId, setSelectedExerciseId] = useState(null);
-  const [sectionForm, setSectionForm] = useState({ title: '', subtitle: '', sortOrder: '1', isPublished: true });
-  const [unitForm, setUnitForm] = useState({ title: '', description: '', kind: 'LESSON', sortOrder: '1', xpReward: '20', isPublished: true });
-  const [exerciseForm, setExerciseForm] = useState({ prompt: '', answerText: '', explanation: '', sortOrder: '1', xpReward: '5' });
-  const [optionForms, setOptionForms] = useState([]);
-  const [matchingPairForms, setMatchingPairForms] = useState([]);
   const [passwordByUserId, setPasswordByUserId] = useState({});
   const [savingKey, setSavingKey] = useState('');
-
-  const selectedSection = useMemo(
-    () => sections.find((section) => section.id === selectedSectionId) || sections[0] || null,
-    [sections, selectedSectionId],
-  );
-  const selectedUnit = useMemo(
-    () => selectedSection?.units?.find((unit) => unit.id === selectedUnitId) || selectedSection?.units?.[0] || null,
-    [selectedSection, selectedUnitId],
-  );
-  const selectedExercise = useMemo(
-    () => selectedUnit?.exercises?.find((exercise) => exercise.id === selectedExerciseId) || selectedUnit?.exercises?.[0] || null,
-    [selectedUnit, selectedExerciseId],
-  );
+  const adminContentRef = useRef(null);
 
   const setStatus = (type, text) => setMessage({ type, text });
 
-  const loadAdminData = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    const onBackPress = () => {
+      if (activeTab === 'content') {
+        const handled = adminContentRef.current?.goBackOneLevel?.();
+        if (handled) return true;
+      }
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [activeTab]);
+
+  const loadAdminData = useCallback(async ({ showLoading = true, updateStatus = true } = {}) => {
+    if (showLoading) setLoading(true);
     const [heartbeatResult, contentResult, usersResult] = await Promise.all([
       getAdminHeartbeatSetting(),
       getAdminContent(),
       getAdminUsers(),
     ]);
-    setLoading(false);
+    if (showLoading) setLoading(false);
 
     const firstError = heartbeatResult.error || contentResult.error || usersResult.error;
     if (firstError) {
@@ -142,58 +118,12 @@ export default function AdminScreen() {
     setHeartbeatSeconds(showValue(heartbeatResult.data?.heartRefillIntervalSeconds ?? 120));
     setSections(contentResult.data || []);
     setUsers(usersResult.data || []);
-    setStatus('success', 'Đã tải dữ liệu admin.');
+    if (updateStatus) setStatus('success', 'Đã tải dữ liệu admin.');
   }, []);
 
   useEffect(() => {
     loadAdminData();
   }, [loadAdminData]);
-
-  useEffect(() => {
-    if (!selectedSection) return;
-    setSelectedSectionId(selectedSection.id);
-    setSectionForm({
-      title: showValue(selectedSection.title),
-      subtitle: showValue(selectedSection.subtitle ?? selectedSection.subTitle),
-      sortOrder: showValue(selectedSection.sortOrder ?? selectedSection.order ?? 1),
-      isPublished: selectedSection.isPublished !== false,
-    });
-  }, [selectedSection]);
-
-  useEffect(() => {
-    if (!selectedUnit) return;
-    setSelectedUnitId(selectedUnit.id);
-    setUnitForm({
-      title: showValue(selectedUnit.title),
-      description: showValue(selectedUnit.description),
-      kind: showValue(selectedUnit.kind || 'LESSON').toUpperCase(),
-      sortOrder: showValue(selectedUnit.sortOrder ?? selectedUnit.order ?? 1),
-      xpReward: showValue(selectedUnit.xpReward ?? selectedUnit.baseXp ?? 20),
-      isPublished: selectedUnit.isPublished !== false,
-    });
-  }, [selectedUnit]);
-
-  useEffect(() => {
-    if (!selectedExercise) return;
-    setSelectedExerciseId(selectedExercise.id);
-    setExerciseForm({
-      prompt: showValue(selectedExercise.prompt),
-      answerText: showValue(selectedExercise.answerText),
-      explanation: showValue(selectedExercise.explanation ?? selectedExercise.instruction),
-      sortOrder: showValue(selectedExercise.sortOrder ?? selectedExercise.order ?? 1),
-      xpReward: showValue(selectedExercise.xpReward ?? 5),
-    });
-    setOptionForms((selectedExercise.options || []).map((option) => ({
-      id: option.id,
-      text: showValue(option.text),
-      isCorrect: option.id === selectedExercise.correctOptionId,
-    })));
-    setMatchingPairForms((selectedExercise.matchingPairs || selectedExercise.pairs || []).map((pair) => ({
-      id: pair.id,
-      leftText: showValue(pair.leftText),
-      rightText: showValue(pair.rightText),
-    })));
-  }, [selectedExercise]);
 
   const runSave = async (key, action, successText) => {
     setSavingKey(key);
@@ -214,7 +144,6 @@ export default function AdminScreen() {
       setStatus('error', 'Interval phải là số giây nguyên lớn hơn 0.');
       return;
     }
-
     const data = await runSave('heartbeat', () => updateAdminHeartbeatSetting(seconds), 'Đã cập nhật interval hồi tim.');
     if (data?.heartRefillIntervalSeconds) {
       setHeartbeatSeconds(String(data.heartRefillIntervalSeconds));
@@ -222,117 +151,118 @@ export default function AdminScreen() {
     }
   };
 
-  const saveSection = async () => {
-    if (!selectedSection) return;
-    const data = await runSave('section', () => updateAdminSection(selectedSection.id, {
-      title: sectionForm.title,
-      subtitle: sectionForm.subtitle,
-      sortOrder: Number(sectionForm.sortOrder),
-      isPublished: sectionForm.isPublished,
+  const handleSaveSection = async (id, form) => {
+    const data = await runSave('section', () => updateAdminSection(id, {
+      title: form.title,
+      subtitle: form.subtitle,
+      sortOrder: Number(form.sortOrder),
+      isPublished: form.isPublished,
     }), 'Đã lưu section.');
-    if (data) await loadAdminData();
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
   };
 
-  const saveUnit = async () => {
-    if (!selectedUnit) return;
-    const data = await runSave('unit', () => updateAdminUnit(selectedUnit.id, {
-      title: unitForm.title || null,
-      description: unitForm.description || null,
-      kind: unitForm.kind,
-      sortOrder: Number(unitForm.sortOrder),
-      xpReward: Number(unitForm.xpReward),
-      isPublished: unitForm.isPublished,
+  const handleCreateSection = async (payload) => {
+    const data = await runSave('create-section', () => createAdminSection(payload), 'Đã tạo section.');
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
+    return data;
+  };
+  const handleDeleteSection = async (id) => {
+    const data = await runSave('delete-section', () => deleteAdminSection(id), 'Đã xóa section.');
+    if (data !== null) await loadAdminData({ showLoading: false, updateStatus: false });
+    return data;
+  };
+
+  const handleSaveUnit = async (id, form) => {
+    const kind = ['LESSON', 'REVIEW', 'CHECKPOINT'].includes(form.kind) ? form.kind : 'LESSON';
+    const data = await runSave('unit', () => updateAdminUnit(id, {
+      title: form.title || null,
+      description: form.description || null,
+      kind,
+      sortOrder: Number(form.sortOrder),
+      xpReward: Number(form.xpReward),
+      isPublished: form.isPublished,
     }), 'Đã lưu unit.');
-    if (data) await loadAdminData();
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
   };
 
-  const saveExercise = async () => {
-    if (!selectedExercise) return;
-    const type = String(selectedExercise.type || '').toUpperCase();
+  const handleCreateUnit = async (payload) => {
+    const data = await runSave('create-unit', () => createAdminUnit(payload), 'Đã tạo unit.');
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
+    return data;
+  };
+  const handleDeleteUnit = async (id) => {
+    const data = await runSave('delete-unit', () => deleteAdminUnit(id), 'Đã xóa unit.');
+    if (data !== null) await loadAdminData({ showLoading: false, updateStatus: false });
+    return data;
+  };
+
+  const handleSaveExercise = async (id, form, optionForms, matchingPairForms, acceptedAnswerForms = []) => {
+    const type = ['MULTIPLE_CHOICE', 'FILL_BLANK', 'MATCHING'].includes(form.type) ? form.type : 'MULTIPLE_CHOICE';
+    const prompt = type === 'MATCHING' ? DEFAULT_MATCHING_PROMPT : form.prompt.trim();
+    if (!prompt) {
+      setStatus('error', 'Nội dung câu hỏi là bắt buộc.');
+      return;
+    }
     const extraPayload = {};
-    if (type === 'MULTIPLE_CHOICE' || type === 'FILL_BLANK') {
+    if (type === 'MULTIPLE_CHOICE') {
       const options = optionForms.filter((option) => option.text.trim());
+      if (options.length < 2) { setStatus('error', 'Cần ít nhất 2 options.'); return; }
+      if (!options.some((option) => option.isCorrect)) { setStatus('error', 'Cần chọn 1 option đúng.'); return; }
       if (options.length > 0) extraPayload.options = options;
     }
-    if (type === 'MATCHING') {
-      const matchingPairs = matchingPairForms.filter((pair) => pair.leftText.trim() && pair.rightText.trim());
-      if (matchingPairs.length > 0) extraPayload.matchingPairs = matchingPairs;
+    if (type === 'FILL_BLANK') {
+      const answerText = acceptedAnswerForms.map((answer) => answer.text.trim()).filter(Boolean).join('|');
+      if (!answerText) { setStatus('error', 'Cần ít nhất 1 đáp án đúng.'); return; }
+      extraPayload.answerText = answerText;
     }
-
-    const data = await runSave('exercise', () => updateAdminExercise(selectedExercise.id, {
-      prompt: exerciseForm.prompt,
-      answerText: exerciseForm.answerText || null,
-      explanation: exerciseForm.explanation || null,
-      sortOrder: Number(exerciseForm.sortOrder),
-      xpReward: Number(exerciseForm.xpReward),
+    if (type === 'MATCHING') {
+      const incompletePairIndex = matchingPairForms.findIndex((pair) => pair.leftText.trim() || pair.rightText.trim() ? !(pair.leftText.trim() && pair.rightText.trim()) : false);
+      if (incompletePairIndex >= 0) { setStatus('error', `Cặp matching ${incompletePairIndex + 1} cần đủ vế trái và vế phải.`); return; }
+      const matchingPairs = matchingPairForms.filter((pair) => pair.leftText.trim() && pair.rightText.trim());
+      if (matchingPairs.length < 1) { setStatus('error', 'Cần ít nhất 1 cặp matching.'); return; }
+      extraPayload.matchingPairs = matchingPairs;
+    }
+    const data = await runSave('exercise', () => updateAdminExercise(id, {
+      type,
+      prompt,
+      answerText: type === 'FILL_BLANK' ? extraPayload.answerText : null,
+      explanation: form.explanation || null,
+      sortOrder: Number(form.sortOrder),
+      xpReward: Number(form.xpReward),
       ...extraPayload,
     }), 'Đã lưu câu hỏi.');
-    if (data) await loadAdminData();
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
   };
 
-  const updateOptionForm = (index, patch) => {
-    setOptionForms((current) => current.map((option, optionIndex) => (
-      optionIndex === index ? { ...option, ...patch } : option
-    )));
+  const handleCreateExercise = async (payload) => {
+    const type = ['MULTIPLE_CHOICE', 'FILL_BLANK', 'MATCHING'].includes(payload.type) ? payload.type : 'MULTIPLE_CHOICE';
+    const data = await runSave('create-exercise', () => createAdminExercise({
+      ...payload,
+      prompt: type === 'MATCHING' ? DEFAULT_MATCHING_PROMPT : payload.prompt,
+      answerText: type === 'MATCHING' ? null : payload.answerText,
+    }), 'Đã tạo câu hỏi.');
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
+    return data;
+  };
+  const handleDeleteExercise = async (id) => {
+    const data = await runSave('delete-exercise', () => deleteAdminExercise(id), 'Đã xóa câu hỏi.');
+    if (data !== null) await loadAdminData({ showLoading: false, updateStatus: false });
+    return data;
   };
 
-  const markCorrectOption = (index) => {
-    setOptionForms((current) => current.map((option, optionIndex) => ({ ...option, isCorrect: optionIndex === index })));
-  };
-
-  const addOptionForm = () => {
-    setOptionForms((current) => [...current, { id: null, text: '', isCorrect: current.length === 0 }]);
-  };
-
-  const removeOptionForm = (index) => {
-    setOptionForms((current) => current.filter((_, optionIndex) => optionIndex !== index));
-  };
-
-  const updateMatchingPairForm = (index, patch) => {
-    setMatchingPairForms((current) => current.map((pair, pairIndex) => (
-      pairIndex === index ? { ...pair, ...patch } : pair
-    )));
-  };
-
-  const addMatchingPairForm = () => {
-    setMatchingPairForms((current) => [...current, { id: null, leftText: '', rightText: '' }]);
-  };
-
-  const removeMatchingPairForm = (index) => {
-    setMatchingPairForms((current) => current.filter((_, pairIndex) => pairIndex !== index));
-  };
-
-  const saveUserPassword = async (userId) => {
+  const handleSavePassword = async (userId) => {
     const password = passwordByUserId[userId] || '';
     if (password.length < 6) {
       setStatus('error', 'Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
-
     const data = await runSave(`password-${userId}`, () => resetAdminUserPassword(userId, password), 'Đã đổi mật khẩu người dùng.');
     if (data) setPasswordByUserId((current) => ({ ...current, [userId]: '' }));
   };
 
-  const confirmResetProgress = (targetUser) => {
-    Alert.alert(
-      'Reset tiến trình',
-      `Xóa toàn bộ dữ liệu học tập của ${targetUser.email}? Tài khoản sẽ trở về như mới.`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            const data = await runSave(
-              `reset-${targetUser.id}`,
-              () => resetAdminUserProgress(targetUser.id),
-              'Đã reset tiến trình người dùng.',
-            );
-            if (data) await loadAdminData();
-          },
-        },
-      ],
-    );
+  const handleResetProgress = async (targetUser) => {
+    const data = await runSave(`reset-${targetUser.id}`, () => resetAdminUserProgress(targetUser.id), 'Đã reset tiến trình người dùng.');
+    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
   };
 
   const handleLogout = () => {
@@ -349,182 +279,18 @@ export default function AdminScreen() {
     ]);
   };
 
-  const renderSettings = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Interval hồi tim</Text>
-      <Text style={styles.helpText}>Nhập số giây cho mỗi lần hồi 1 tim. Ví dụ 120 là 2 phút.</Text>
-      <Field label="Số giây" value={heartbeatSeconds} onChangeText={setHeartbeatSeconds} keyboardType="number-pad" />
-      <Pressable style={styles.primaryButton} onPress={saveHeartbeat} disabled={savingKey === 'heartbeat'}>
-        <Text style={styles.primaryButtonText}>{savingKey === 'heartbeat' ? 'Đang lưu...' : 'Lưu interval'}</Text>
-      </Pressable>
-    </View>
-  );
-
-  const renderContent = () => (
-    <View>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Section</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {sections.map((section) => (
-            <Pressable
-              key={section.id}
-              style={[styles.chip, selectedSection?.id === section.id && styles.activeChip]}
-              onPress={() => setSelectedSectionId(section.id)}
-            >
-              <Text style={[styles.chipText, selectedSection?.id === section.id && styles.activeChipText]}>{section.title}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {selectedSection ? (
-          <>
-            <Field label="Tên section" value={sectionForm.title} onChangeText={(title) => setSectionForm((current) => ({ ...current, title }))} />
-            <Field label="Mô tả" value={sectionForm.subtitle} onChangeText={(subtitle) => setSectionForm((current) => ({ ...current, subtitle }))} />
-            <Field label="Thứ tự" value={sectionForm.sortOrder} onChangeText={(sortOrder) => setSectionForm((current) => ({ ...current, sortOrder }))} keyboardType="number-pad" />
-            <View style={styles.switchRow}>
-              <Text style={styles.fieldLabel}>Hiển thị</Text>
-              <Switch value={sectionForm.isPublished} onValueChange={(isPublished) => setSectionForm((current) => ({ ...current, isPublished }))} />
-            </View>
-            <Pressable style={styles.primaryButton} onPress={saveSection} disabled={savingKey === 'section'}>
-              <Text style={styles.primaryButtonText}>{savingKey === 'section' ? 'Đang lưu...' : 'Lưu section'}</Text>
-            </Pressable>
-          </>
-        ) : <Text style={styles.emptyText}>Chưa có section.</Text>}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Unit</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {(selectedSection?.units || []).map((unit) => (
-            <Pressable key={unit.id} style={[styles.chip, selectedUnit?.id === unit.id && styles.activeChip]} onPress={() => setSelectedUnitId(unit.id)}>
-              <Text style={[styles.chipText, selectedUnit?.id === unit.id && styles.activeChipText]}>{unit.title || `Unit ${unit.sortOrder}`}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {selectedUnit ? (
-          <>
-            <Field label="Tên unit" value={unitForm.title} onChangeText={(title) => setUnitForm((current) => ({ ...current, title }))} />
-            <Field label="Mô tả" value={unitForm.description} onChangeText={(description) => setUnitForm((current) => ({ ...current, description }))} multiline />
-            <Field label="Loại unit" value={unitForm.kind} onChangeText={(kind) => setUnitForm((current) => ({ ...current, kind: kind.toUpperCase() }))} />
-            <Field label="Thứ tự" value={unitForm.sortOrder} onChangeText={(sortOrder) => setUnitForm((current) => ({ ...current, sortOrder }))} keyboardType="number-pad" />
-            <Field label="XP" value={unitForm.xpReward} onChangeText={(xpReward) => setUnitForm((current) => ({ ...current, xpReward }))} keyboardType="number-pad" />
-            <View style={styles.switchRow}>
-              <Text style={styles.fieldLabel}>Hiển thị</Text>
-              <Switch value={unitForm.isPublished} onValueChange={(isPublished) => setUnitForm((current) => ({ ...current, isPublished }))} />
-            </View>
-            <Pressable style={styles.primaryButton} onPress={saveUnit} disabled={savingKey === 'unit'}>
-              <Text style={styles.primaryButtonText}>{savingKey === 'unit' ? 'Đang lưu...' : 'Lưu unit'}</Text>
-            </Pressable>
-          </>
-        ) : <Text style={styles.emptyText}>Chọn section có unit để sửa.</Text>}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Câu hỏi</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {(selectedUnit?.exercises || []).map((exercise) => (
-            <Pressable key={exercise.id} style={[styles.chip, selectedExercise?.id === exercise.id && styles.activeChip]} onPress={() => setSelectedExerciseId(exercise.id)}>
-              <Text style={[styles.chipText, selectedExercise?.id === exercise.id && styles.activeChipText]}>Câu {exercise.sortOrder || exercise.order}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {selectedExercise ? (
-          <>
-            <Text style={styles.helpText}>Loại: {selectedExercise.type}</Text>
-            <Field label="Câu hỏi" value={exerciseForm.prompt} onChangeText={(prompt) => setExerciseForm((current) => ({ ...current, prompt }))} multiline />
-            <Field label="Đáp án text" value={exerciseForm.answerText} onChangeText={(answerText) => setExerciseForm((current) => ({ ...current, answerText }))} multiline />
-            <Field label="Giải thích" value={exerciseForm.explanation} onChangeText={(explanation) => setExerciseForm((current) => ({ ...current, explanation }))} multiline />
-            <Field label="Thứ tự" value={exerciseForm.sortOrder} onChangeText={(sortOrder) => setExerciseForm((current) => ({ ...current, sortOrder }))} keyboardType="number-pad" />
-            <Field label="XP" value={exerciseForm.xpReward} onChangeText={(xpReward) => setExerciseForm((current) => ({ ...current, xpReward }))} keyboardType="number-pad" />
-            {String(selectedExercise.type || '').toUpperCase() !== 'MATCHING' ? (
-              <View style={styles.nestedEditor}>
-                <View style={styles.nestedHeader}>
-                  <Text style={styles.nestedTitle}>Options</Text>
-                  <Pressable style={styles.smallButton} onPress={addOptionForm}>
-                    <Text style={styles.smallButtonText}>Thêm</Text>
-                  </Pressable>
-                </View>
-                {optionForms.map((option, index) => (
-                  <View key={option.id || `new-option-${index}`} style={styles.nestedRow}>
-                    <Field label={`Option ${index + 1}`} value={option.text} onChangeText={(text) => updateOptionForm(index, { text })} />
-                    <View style={styles.rowActions}>
-                      <Pressable style={[styles.secondaryButton, option.isCorrect && styles.correctButton]} onPress={() => markCorrectOption(index)}>
-                        <Text style={[styles.secondaryButtonText, option.isCorrect && styles.correctButtonText]}>{option.isCorrect ? 'Đáp án đúng' : 'Chọn đúng'}</Text>
-                      </Pressable>
-                      <Pressable style={styles.dangerButton} onPress={() => removeOptionForm(index)}>
-                        <Text style={styles.dangerButtonText}>Xóa</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.nestedEditor}>
-                <View style={styles.nestedHeader}>
-                  <Text style={styles.nestedTitle}>Cặp matching</Text>
-                  <Pressable style={styles.smallButton} onPress={addMatchingPairForm}>
-                    <Text style={styles.smallButtonText}>Thêm</Text>
-                  </Pressable>
-                </View>
-                {matchingPairForms.map((pair, index) => (
-                  <View key={pair.id || `new-pair-${index}`} style={styles.nestedRow}>
-                    <Field label={`Vế trái ${index + 1}`} value={pair.leftText} onChangeText={(leftText) => updateMatchingPairForm(index, { leftText })} />
-                    <Field label={`Vế phải ${index + 1}`} value={pair.rightText} onChangeText={(rightText) => updateMatchingPairForm(index, { rightText })} />
-                    <Pressable style={styles.dangerButton} onPress={() => removeMatchingPairForm(index)}>
-                      <Text style={styles.dangerButtonText}>Xóa cặp</Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            )}
-            <Pressable style={styles.primaryButton} onPress={saveExercise} disabled={savingKey === 'exercise'}>
-              <Text style={styles.primaryButtonText}>{savingKey === 'exercise' ? 'Đang lưu...' : 'Lưu câu hỏi'}</Text>
-            </Pressable>
-          </>
-        ) : <Text style={styles.emptyText}>Chọn unit có câu hỏi để sửa.</Text>}
-      </View>
-    </View>
-  );
-
-  const renderUsers = () => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Danh sách người dùng</Text>
-      {users.map((targetUser) => (
-        <View key={targetUser.id} style={styles.userCard}>
-          <View style={styles.userHeader}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{(targetUser.name || targetUser.email || '?').slice(0, 1).toUpperCase()}</Text>
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{targetUser.name}</Text>
-              <Text style={styles.userEmail}>{targetUser.email}</Text>
-              <Text style={styles.userMeta}>XP {targetUser.totalXp ?? 0} · Level {targetUser.level ?? 1} · Tim {targetUser.hearts ?? 0}/{targetUser.maxHearts ?? 5}</Text>
-            </View>
-          </View>
-          <Field
-            label="Mật khẩu mới"
-            value={passwordByUserId[targetUser.id] || ''}
-            onChangeText={(newPassword) => setPasswordByUserId((current) => ({ ...current, [targetUser.id]: newPassword }))}
-          />
-          <View style={styles.userActionRow}>
-            <Pressable style={styles.secondaryButton} onPress={() => saveUserPassword(targetUser.id)} disabled={savingKey === `password-${targetUser.id}`}>
-              <Text style={styles.secondaryButtonText}>{savingKey === `password-${targetUser.id}` ? 'Đang đổi...' : 'Đổi mật khẩu'}</Text>
-            </Pressable>
-            <Pressable style={styles.dangerButton} onPress={() => confirmResetProgress(targetUser)} disabled={savingKey === `reset-${targetUser.id}`}>
-              <Text style={styles.dangerButtonText}>{savingKey === `reset-${targetUser.id}` ? 'Đang reset...' : 'Reset tiến trình'}</Text>
-            </Pressable>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-
   return (
     <AdminGuard>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>ADMIN</Text>
-            <Text style={styles.title}>Bảng quản trị</Text>
+          <View style={styles.headerLeft}>
+            <Pressable style={styles.backButton} onPress={() => { if (activeTab === 'content') { adminContentRef.current?.goBackOneLevel?.(); } }} accessibilityLabel="Quay lại">
+              <Ionicons name="chevron-back" size={24} color="#1D1B20" />
+            </Pressable>
+            <View>
+              <Text style={styles.eyebrow}>ADMIN</Text>
+              <Text style={styles.title}>Bảng quản trị</Text>
+            </View>
           </View>
           <Pressable style={styles.logoutButton} onPress={handleLogout} accessibilityLabel="Đăng xuất admin">
             <Ionicons name="log-out-outline" size={22} color="#B3261E" />
@@ -551,9 +317,41 @@ export default function AdminScreen() {
           </View>
         ) : (
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            {activeTab === 'settings' ? renderSettings() : null}
-            {activeTab === 'content' ? renderContent() : null}
-            {activeTab === 'users' ? renderUsers() : null}
+            {activeTab === 'settings' && (
+              <AdminSettings
+                heartbeatSeconds={heartbeatSeconds}
+                onChangeHeartbeat={setHeartbeatSeconds}
+                onSave={saveHeartbeat}
+                saving={savingKey === 'heartbeat'}
+              />
+            )}
+            {activeTab === 'content' && (
+              <AdminContent
+                ref={adminContentRef}
+                sections={sections}
+                savingKey={savingKey}
+                onSetStatus={setStatus}
+                onSaveSection={handleSaveSection}
+                onCreateSection={handleCreateSection}
+                onDeleteSection={handleDeleteSection}
+                onSaveUnit={handleSaveUnit}
+                onCreateUnit={handleCreateUnit}
+                onDeleteUnit={handleDeleteUnit}
+                onSaveExercise={handleSaveExercise}
+                onCreateExercise={handleCreateExercise}
+                onDeleteExercise={handleDeleteExercise}
+              />
+            )}
+            {activeTab === 'users' && (
+              <AdminUsers
+                users={users}
+                passwordByUserId={passwordByUserId}
+                onPasswordChange={(id, pw) => setPasswordByUserId((c) => ({ ...c, [id]: pw }))}
+                onSavePassword={handleSavePassword}
+                onResetProgress={handleResetProgress}
+                savingKey={savingKey}
+              />
+            )}
           </ScrollView>
         )}
       </SafeAreaView>
@@ -576,46 +374,15 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: '800', color: '#625B71' },
   activeTabText: { color: '#fff' },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  card: { marginBottom: 16, borderRadius: 24, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E7E0EC', padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  cardTitle: { fontSize: 18, fontWeight: '900', color: '#1D1B20', marginBottom: 8 },
-  helpText: { fontSize: 13, lineHeight: 20, color: '#625B71', marginBottom: 10 },
-  fieldBlock: { marginTop: 10 },
-  fieldLabel: { fontSize: 13, fontWeight: '800', color: '#49454F', marginBottom: 6 },
-  input: { minHeight: 48, borderWidth: 1, borderColor: '#CAC4D0', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, color: '#1D1B20', fontSize: 15, backgroundColor: '#FFFBFE' },
-  multilineInput: { minHeight: 92, textAlignVertical: 'top' },
-  switchRow: { minHeight: 48, marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  primaryButton: { minHeight: 48, marginTop: 14, borderRadius: 16, backgroundColor: '#6750A4', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '900' },
-  secondaryButton: { minHeight: 48, borderRadius: 16, backgroundColor: '#EADDFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
-  secondaryButtonText: { color: '#4F378B', fontSize: 14, fontWeight: '900' },
-  dangerButton: { minHeight: 48, borderRadius: 16, backgroundColor: '#F9DEDC', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
-  dangerButtonText: { color: '#B3261E', fontSize: 14, fontWeight: '900' },
-  chipRow: { gap: 8, paddingVertical: 6 },
-  chip: { minHeight: 44, borderRadius: 22, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E7E0EC' },
-  activeChip: { backgroundColor: '#6750A4' },
-  chipText: { color: '#49454F', fontWeight: '800' },
-  activeChipText: { color: '#fff' },
-  emptyText: { color: '#625B71', fontSize: 14, lineHeight: 20, marginTop: 8 },
   message: { marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 16, fontWeight: '700', lineHeight: 18 },
   errorMessage: { color: '#B3261E', backgroundColor: '#F9DEDC' },
   successMessage: { color: '#146C2E', backgroundColor: '#DDF8E7' },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  userCard: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#E7E0EC', paddingTop: 14 },
-  userHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#EADDFF', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#4F378B', fontSize: 18, fontWeight: '900' },
-  userInfo: { flex: 1 },
-  userName: { fontSize: 16, fontWeight: '900', color: '#1D1B20' },
-  userEmail: { marginTop: 2, color: '#625B71', fontSize: 13 },
-  userMeta: { marginTop: 4, color: '#49454F', fontSize: 12, fontWeight: '700' },
-  userActionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  nestedEditor: { marginTop: 14, borderTopWidth: 1, borderTopColor: '#E7E0EC', paddingTop: 12 },
-  nestedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  nestedTitle: { fontSize: 15, fontWeight: '900', color: '#1D1B20' },
-  nestedRow: { marginTop: 8, padding: 10, borderRadius: 16, backgroundColor: '#FFFBFE', borderWidth: 1, borderColor: '#E7E0EC' },
-  rowActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  smallButton: { minHeight: 40, borderRadius: 20, backgroundColor: '#EADDFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
-  smallButtonText: { color: '#4F378B', fontSize: 13, fontWeight: '900' },
-  correctButton: { backgroundColor: '#DDF8E7' },
-  correctButtonText: { color: '#146C2E' },
+  helpText: { fontSize: 13, lineHeight: 20, color: '#625B71', marginBottom: 10 },
+  primaryButton: { minHeight: 48, marginTop: 14, borderRadius: 16, backgroundColor: '#6750A4', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  secondaryButton: { minHeight: 48, borderRadius: 16, backgroundColor: '#EADDFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
+  secondaryButtonText: { color: '#4F378B', fontSize: 14, fontWeight: '900' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  backButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
 });

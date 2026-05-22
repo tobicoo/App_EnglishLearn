@@ -5,7 +5,10 @@ export default function ResultScreen({
   correctCount,
   totalQuestions,
   xpEarned,
-  heartsLeft,
+  gemsEarned,
+  previousLevel,
+  level,
+  leveledUp,
   completionState,
   accuracy,
   onNextUnit,
@@ -17,6 +20,7 @@ export default function ResultScreen({
   const completionLabel = completionState === 'COMPLETED' || completionState === 'completed'
     ? 'Đã hoàn thành'
     : 'Chưa hoàn thành';
+  const shouldShowLevelUp = leveledUp && typeof previousLevel === 'number' && typeof level === 'number';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,6 +34,13 @@ export default function ResultScreen({
         <Text style={styles.score}>{correctCount}/{totalQuestions} câu đúng • {xpEarned} XP nhận được</Text>
         <Text style={styles.completionState}>{completionLabel}</Text>
 
+        {shouldShowLevelUp ? (
+          <View style={styles.levelUpCard}>
+            <Text style={styles.levelUpLabel}>Lên cấp!</Text>
+            <Text style={styles.levelUpValue}>Level {previousLevel} → {level}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.stats}>
           <View style={styles.statItem}>
             <Text style={styles.statEmoji}>⚡</Text>
@@ -37,14 +48,14 @@ export default function ResultScreen({
             <Text style={styles.statLabel}>XP</Text>
           </View>
           <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>💎</Text>
+            <Text style={styles.statValue}>+{gemsEarned ?? 0}</Text>
+            <Text style={styles.statLabel}>Gems</Text>
+          </View>
+          <View style={styles.statItem}>
             <Text style={styles.statEmoji}>🎯</Text>
             <Text style={styles.statValue}>{safeAccuracy}%</Text>
             <Text style={styles.statLabel}>Chính xác</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statEmoji}>❤️</Text>
-            <Text style={styles.statValue}>{heartsLeft}</Text>
-            <Text style={styles.statLabel}>Mạng còn</Text>
           </View>
         </View>
 
@@ -70,8 +81,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: 'bold', color: '#3c3c3c', marginBottom: 8 },
   score: { fontSize: 18, color: '#afafaf', marginBottom: 30 },
   completionState: { fontSize: 15, color: '#58cc02', fontWeight: '700', marginBottom: 24 },
-  stats: { flexDirection: 'row', gap: 20, marginBottom: 40 },
-  statItem: { alignItems: 'center', backgroundColor: '#f8f9fa', padding: 20, borderRadius: 20, minWidth: 90 },
+  levelUpCard: { width: '100%', backgroundColor: '#fff8db', borderColor: '#ffc800', borderWidth: 2, borderRadius: 18, padding: 16, alignItems: 'center', marginBottom: 24 },
+  levelUpLabel: { color: '#b77900', fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 },
+  levelUpValue: { color: '#3c3c3c', fontSize: 24, fontWeight: 'bold', marginTop: 4 },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', width: '100%', marginBottom: 40 },
+  statItem: { alignItems: 'center', backgroundColor: '#f8f9fa', paddingVertical: 16, paddingHorizontal: 12, borderRadius: 20, width: '30%', minWidth: 92 },
   statEmoji: { fontSize: 24, marginBottom: 4 },
   statValue: { fontSize: 22, fontWeight: 'bold', color: '#3c3c3c' },
   statLabel: { fontSize: 12, color: '#afafaf', marginTop: 2 },

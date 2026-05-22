@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Tabs } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { BackHandler, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const getHeartLabel = (user, nowMs) => {
@@ -39,6 +39,12 @@ export default function TabLayout() {
         const timer = setInterval(() => setNowMs(Date.now()), 60000);
         return () => clearInterval(timer);
     }, [showHeartInfo]);
+
+    useEffect(() => {
+        const onBackPress = () => true;
+        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => subscription.remove();
+    }, []);
 
     const hearts = user?.hearts ?? 0;
     const maxHearts = user?.maxHearts ?? 5;

@@ -72,8 +72,9 @@ async function applyLazyHeartRefill(tx, user, now = new Date()) {
 }
 
 function buildHeartMetadata(user, now = new Date()) {
-  const refill = computeLazyHeartRefill(user, now);
-  const heartRefillIntervalMs = getHeartRefillIntervalMs();
+  const intervalSeconds = getHeartRefillIntervalSecondsSync();
+  const refill = computeLazyHeartRefill(user, now, intervalSeconds);
+  const heartRefillIntervalMs = getHeartRefillIntervalMs(intervalSeconds);
   const nextHeartAt = refill.hearts >= refill.maxHearts
     ? null
     : new Date(refill.heartRefilledAt.getTime() + heartRefillIntervalMs);
@@ -88,6 +89,7 @@ function buildHeartMetadata(user, now = new Date()) {
     nextHeartAt,
     secondsUntilNextHeart,
     minutesUntilNextHeart: Math.ceil(secondsUntilNextHeart / 60),
+    heartRefillIntervalSeconds: intervalSeconds,
   };
 }
 

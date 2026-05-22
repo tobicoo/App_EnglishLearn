@@ -12,7 +12,7 @@ import {
   submitExerciseAttempt,
 } from '@/services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -124,6 +124,13 @@ export default function QuizScreen() {
   const shakeValue = useSharedValue(0);
   const feedbackOpacity = useSharedValue(0);
 
+  const heartsRef = useRef(hearts);
+  const heartInfoRef = useRef(heartInfo);
+  const heartTimerRef = useRef(null);
+
+  useEffect(() => { heartsRef.current = hearts; }, [hearts]);
+  useEffect(() => { heartInfoRef.current = heartInfo; }, [heartInfo]);
+
   const shakeStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: shakeValue.value }],
   }));
@@ -147,28 +154,42 @@ export default function QuizScreen() {
 
   useEffect(() => {
     if (hearts >= heartInfo.maxHearts || !heartInfo.nextHeartAt) {
+      if (heartTimerRef.current) {
+        clearTimeout(heartTimerRef.current);
+        heartTimerRef.current = null;
+      }
       return undefined;
     }
 
     const nextHeartTime = new Date(heartInfo.nextHeartAt).getTime();
     const delay = Math.max(nextHeartTime - Date.now() + 500, 1000);
-    const timer = setTimeout(() => {
-      let nextHearts = hearts;
-      setHearts((value) => {
-        nextHearts = Math.min(value + 1, heartInfo.maxHearts);
-        return nextHearts;
-      });
-      setHeartInfo((current) => ({
-        ...current,
-        nextHeartAt: nextHearts >= current.maxHearts
+    const expectedNextHeartAt = heartInfo.nextHeartAt;
+
+    heartTimerRef.current = setTimeout(() => {
+      heartTimerRef.current = null;
+      const currentHearts = heartsRef.current;
+      const currentInfo = heartInfoRef.current;
+      if (currentHearts >= currentInfo.maxHearts || currentInfo.nextHeartAt !== expectedNextHeartAt) {
+        return;
+      }
+      const nextHearts = Math.min(currentHearts + 1, currentInfo.maxHearts);
+      setHearts(nextHearts);
+      setHeartInfo({
+        ...currentInfo,
+        nextHeartAt: nextHearts >= currentInfo.maxHearts
           ? null
-          : new Date(Date.now() + (current.heartRefillIntervalSeconds ?? 120) * 1000).toISOString(),
-        minutesUntilNextHeart: nextHearts >= current.maxHearts ? 0 : Math.ceil((current.heartRefillIntervalSeconds ?? 120) / 60),
-      }));
+          : new Date(Date.now() + (currentInfo.heartRefillIntervalSeconds ?? 120) * 1000).toISOString(),
+        minutesUntilNextHeart: nextHearts >= currentInfo.maxHearts ? 0 : Math.ceil((currentInfo.heartRefillIntervalSeconds ?? 120) / 60),
+      });
       refreshUser();
     }, delay);
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (heartTimerRef.current) {
+        clearTimeout(heartTimerRef.current);
+        heartTimerRef.current = null;
+      }
+    };
   }, [hearts, heartInfo.maxHearts, heartInfo.nextHeartAt]);
 
   const currentQ = questions[currentIndex];
@@ -310,10 +331,16 @@ export default function QuizScreen() {
       return;
     }
 
+    if (heartTimerRef.current) {
+      clearTimeout(heartTimerRef.current);
+      heartTimerRef.current = null;
+    }
+
     setFeedback(data);
     setIsAnswered(true);
     setHearts(typeof data?.hearts === 'number' ? data.hearts : hearts);
     setHeartInfo((current) => getHeartInfoFromPayload(data, current));
+    refreshUser();
     if (data?.isCorrect) {
       setCorrectCount((value) => value + 1);
     } else {
@@ -348,6 +375,10 @@ export default function QuizScreen() {
     setHeartInfo((current) => getHeartInfoFromPayload(data, current));
     setResultSummary({
       xpEarned: data?.xpAwarded ?? 0,
+      gemsEarned: data?.gemsAwarded ?? 0,
+      previousLevel: data?.previousLevel,
+      level: data?.level,
+      leveledUp: Boolean(data?.leveledUp),
       accuracy: data?.unitAttempt?.score ?? 0,
       completionState: data?.progress?.status ?? data?.unitAttempt?.status ?? 'completed',
       totalQuestions,
@@ -564,6 +595,10 @@ export default function QuizScreen() {
         correctCount={resultSummary.correctCount}
         totalQuestions={resultSummary.totalQuestions}
         xpEarned={resultSummary.xpEarned}
+        gemsEarned={resultSummary.gemsEarned}
+        previousLevel={resultSummary.previousLevel}
+        level={resultSummary.level}
+        leveledUp={resultSummary.leveledUp}
         heartsLeft={hearts}
         accuracy={resultSummary.accuracy}
         completionState={resultSummary.completionState}

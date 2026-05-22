@@ -13,7 +13,7 @@ export const Colors = {
 
 export const GameConfig = {
   XP_PER_CORRECT_ANSWER: 10,
-  GEMS_PER_COMPLETED_UNIT: 5,
+  GEMS_PER_COMPLETED_UNIT: 10,
   MAX_HEARTS: 5,
   XP_PER_LEVEL: 200,
 };

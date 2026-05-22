@@ -56,7 +56,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const xpProgress = Math.min(((user.xp || 0) % GameConfig.XP_PER_LEVEL) / GameConfig.XP_PER_LEVEL * 100, 100);
+  const xpProgress = Math.min(((user.totalXp || 0) % GameConfig.XP_PER_LEVEL) / GameConfig.XP_PER_LEVEL * 100, 100);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
           <View style={[styles.xpBarBg, { backgroundColor: theme.border }]}> 
             <View style={[styles.xpBarFill, { width: `${xpProgress}%` }]} />
           </View>
-          <Text style={[styles.xpText, { color: theme.textSecondary }]}>{user.xp || 0} XP</Text>
+          <Text style={[styles.xpText, { color: theme.textSecondary }]}>{user.totalXp || 0} XP</Text>
         </View>
 
         {/* Stats Grid */}
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
           </View>
           <View style={[styles.statCard, { backgroundColor: theme.statCardBg4 }]}>
             <Text style={styles.statEmoji}>⚡</Text>
-            <Text style={[styles.statValue, { color: theme.text }]}>{user.xp || 0}</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{user.totalXp || 0}</Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total XP</Text>
           </View>
         </View>
