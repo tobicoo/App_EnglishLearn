@@ -40,4 +40,5 @@ Thumbs.db
 
 .omo
 backend/db.json
-README.md
+backend/README.md
+frontend/README.md
