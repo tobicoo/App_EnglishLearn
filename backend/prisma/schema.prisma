@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UnitKind {
+  LESSON
+  REVIEW
+  CHECKPOINT
+}
+
+enum ExerciseType {
+  MULTIPLE_CHOICE
+  FILL_BLANK
+  MATCHING
+}
+
+enum UnitProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum UnitAttemptStatus {
+  STARTED
+  COMPLETED
+  ABANDONED
+}
+
+enum XpLedgerSource {
+  UNIT_COMPLETION
+  EXERCISE_CORRECT
+  MANUAL_ADJUSTMENT
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id              Int      @id @default(autoincrement()) @db.UnsignedInt
+  email           String   @unique @db.VarChar(255)
+  passwordHash    String   @map("password_hash") @db.VarChar(255)
+  name            String   @db.VarChar(100)
+  age             Int?     @db.UnsignedTinyInt
+  avatar          String?  @db.VarChar(32)
+  role            UserRole @default(USER)
+  level           Int      @default(1) @db.UnsignedSmallInt
+  totalXp         Int      @default(0) @map("total_xp") @db.UnsignedInt
+  streak          Int      @default(0) @db.UnsignedSmallInt
+  gems            Int      @default(0) @db.UnsignedInt
+  hearts          Int      @default(5) @db.UnsignedTinyInt
+  maxHearts       Int      @default(5) @map("max_hearts") @db.UnsignedTinyInt
+  heartRefilledAt DateTime @default(now()) @map("heart_refilled_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  unitProgress     UserUnitProgress[]
+  unitAttempts     UnitAttempt[]
+  exerciseAttempts ExerciseAttempt[]
+  xpLedger         XpLedger[]
+
+  @@index([totalXp], map: "idx_users_total_xp")
+  @@map("users")
+}
+
+model AppSetting {
+  key       String   @id @db.VarChar(120)
+  value     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+model Section {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  title       String   @db.VarChar(120)
+  subtitle    String?  @db.VarChar(255)
+  sortOrder   Int      @map("sort_order") @db.UnsignedSmallInt
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  units Unit[]
+
+  @@unique([sortOrder], map: "uk_sections_sort_order")
+  @@map("sections")
+}
+
+model Unit {
+  id          Int      @id @default(autoincrement()) @db.UnsignedInt
+  sectionId   Int      @map("section_id") @db.UnsignedInt
+  title       String?  @db.VarChar(160)
+  description String?  @db.Text
+  kind        UnitKind @default(LESSON)
+  sortOrder   Int      @map("sort_order") @db.UnsignedSmallInt
+  xpReward    Int      @default(20) @map("xp_reward") @db.UnsignedSmallInt
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  section          Section            @relation(fields: [sectionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  flashcards       Flashcard[]
+  exercises        Exercise[]
+  progress         UserUnitProgress[]
+  attempts         UnitAttempt[]
+  exerciseAttempts ExerciseAttempt[]
+  xpLedger         XpLedger[]
+
+  @@unique([sectionId, sortOrder], map: "uk_units_section_sort_order")
+  @@index([sectionId], map: "idx_units_section_id")
+  @@map("units")
+}
+
+model Flashcard {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  unitId    Int      @map("unit_id") @db.UnsignedInt
+  word      String   @db.VarChar(120)
+  phonetic  String?  @db.VarChar(120)
+  meaning   String   @db.VarChar(255)
+  imageUrl  String?  @map("image_url") @db.VarChar(500)
+  sortOrder Int      @map("sort_order") @db.UnsignedSmallInt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([unitId, sortOrder], map: "uk_flashcards_unit_sort_order")
+  @@index([unitId], map: "idx_flashcards_unit_id")
+  @@map("flashcards")
+}
+
+model Exercise {
+  id              Int          @id @default(autoincrement()) @db.UnsignedInt
+  unitId          Int          @map("unit_id") @db.UnsignedInt
+  type            ExerciseType
+  prompt          String       @db.Text
+  answerText      String?      @map("answer_text") @db.Text
+  correctOptionId Int?         @unique @map("correct_option_id") @db.UnsignedInt
+  explanation     String?      @db.Text
+  sortOrder       Int          @map("sort_order") @db.UnsignedSmallInt
+  xpReward        Int          @default(5) @map("xp_reward") @db.UnsignedSmallInt
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  unit          Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  options       ExerciseOption[]
+  correctOption ExerciseOption?   @relation("CorrectExerciseOption", fields: [correctOptionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  matchingPairs MatchingPair[]
+  attempts      ExerciseAttempt[]
+
+  @@unique([unitId, sortOrder], map: "uk_exercises_unit_sort_order")
+  @@index([unitId], map: "idx_exercises_unit_id")
+  @@map("exercises")
+}
+
+model ExerciseOption {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  exerciseId Int      @map("exercise_id") @db.UnsignedInt
+  text       String   @db.Text
+  sortOrder  Int      @map("sort_order") @db.UnsignedSmallInt
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  exercise           Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  correctForExercise Exercise? @relation("CorrectExerciseOption")
+
+  @@unique([exerciseId, sortOrder], map: "uk_exercise_options_exercise_sort_order")
+  @@index([exerciseId], map: "idx_exercise_options_exercise_id")
+  @@map("exercise_options")
+}
+
+model MatchingPair {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  exerciseId Int      @map("exercise_id") @db.UnsignedInt
+  leftText   String   @map("left_text") @db.VarChar(255)
+  rightText  String   @map("right_text") @db.VarChar(255)
+  sortOrder  Int      @map("sort_order") @db.UnsignedSmallInt
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([exerciseId, sortOrder], map: "uk_matching_pairs_exercise_sort_order")
+  @@index([exerciseId], map: "idx_matching_pairs_exercise_id")
+  @@map("matching_pairs")
+}
+
+model UserUnitProgress {
+  id                 Int                @id @default(autoincrement()) @db.UnsignedInt
+  userId             Int                @map("user_id") @db.UnsignedInt
+  unitId             Int                @map("unit_id") @db.UnsignedInt
+  status             UnitProgressStatus @default(NOT_STARTED)
+  completedExercises Int                @default(0) @map("completed_exercises") @db.UnsignedSmallInt
+  totalExercises     Int                @default(0) @map("total_exercises") @db.UnsignedSmallInt
+  bestScore          Int?               @map("best_score") @db.UnsignedSmallInt
+  completedAt        DateTime?          @map("completed_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  unit Unit @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, unitId], map: "uk_user_unit_progress_user_unit")
+  @@index([unitId], map: "idx_user_unit_progress_unit_id")
+  @@map("user_unit_progress")
+}
+
+model UnitAttempt {
+  id             Int               @id @default(autoincrement()) @db.UnsignedInt
+  userId         Int               @map("user_id") @db.UnsignedInt
+  unitId         Int               @map("unit_id") @db.UnsignedInt
+  status         UnitAttemptStatus @default(STARTED)
+  score          Int               @default(0) @db.UnsignedSmallInt
+  totalExercises Int               @default(0) @map("total_exercises") @db.UnsignedSmallInt
+  correctAnswers Int               @default(0) @map("correct_answers") @db.UnsignedSmallInt
+  xpEarned       Int               @default(0) @map("xp_earned") @db.UnsignedInt
+  startedAt      DateTime          @default(now()) @map("started_at")
+  completedAt    DateTime?         @map("completed_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  unit             Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  exerciseAttempts ExerciseAttempt[]
+  xpLedger         XpLedger[]
+
+  @@index([userId, unitId, startedAt], map: "idx_unit_attempts_user_unit_started")
+  @@index([unitId], map: "idx_unit_attempts_unit_id")
+  @@map("unit_attempts")
+}
+
+model ExerciseAttempt {
+  id            Int      @id @default(autoincrement()) @db.UnsignedInt
+  userId        Int      @map("user_id") @db.UnsignedInt
+  unitId        Int      @map("unit_id") @db.UnsignedInt
+  exerciseId    Int      @map("exercise_id") @db.UnsignedInt
+  unitAttemptId Int?     @map("unit_attempt_id") @db.UnsignedInt
+  response      Json?
+  isCorrect     Boolean  @default(false) @map("is_correct")
+  heartsBefore  Int      @map("hearts_before") @db.UnsignedTinyInt
+  heartsAfter   Int      @map("hearts_after") @db.UnsignedTinyInt
+  xpEarned      Int      @default(0) @map("xp_earned") @db.UnsignedInt
+  attemptedAt   DateTime @default(now()) @map("attempted_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  unit        Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  exercise    Exercise     @relation(fields: [exerciseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  unitAttempt UnitAttempt? @relation(fields: [unitAttemptId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId, exerciseId, attemptedAt], map: "idx_exercise_attempts_user_exercise_attempted")
+  @@index([unitAttemptId], map: "idx_exercise_attempts_unit_attempt_id")
+  @@index([unitId], map: "idx_exercise_attempts_unit_id")
+  @@map("exercise_attempts")
+}
+
+model XpLedger {
+  id             Int            @id @default(autoincrement()) @db.UnsignedInt
+  userId         Int            @map("user_id") @db.UnsignedInt
+  unitId         Int?           @map("unit_id") @db.UnsignedInt
+  unitAttemptId  Int?           @map("unit_attempt_id") @db.UnsignedInt
+  source         XpLedgerSource
+  idempotencyKey String         @map("idempotency_key") @db.VarChar(160)
+  amount         Int            @db.UnsignedInt
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  unit        Unit?        @relation(fields: [unitId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  unitAttempt UnitAttempt? @relation(fields: [unitAttemptId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([userId, idempotencyKey], map: "uk_xp_ledger_user_idempotency")
+  @@index([userId, createdAt], map: "idx_xp_ledger_user_created")
+  @@index([unitId], map: "idx_xp_ledger_unit_id")
+  @@index([unitAttemptId], map: "idx_xp_ledger_unit_attempt_id")
+  @@map("xp_ledger")
+}
