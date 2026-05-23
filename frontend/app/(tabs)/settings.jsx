@@ -127,7 +127,7 @@ export default function MenuScreen() {
           <>
             <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('section_admin')}</Text>
             <View style={[styles.menuSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <MenuItem icon="🛡️" label={t('menu_admin_panel')} theme={theme} onPress={() => router.push('/admin')} badge="Admin" />
+              <MenuItem icon="🛡️" label={t('menu_admin_panel')} theme={theme} onPress={() => router.replace('/admin')} badge="Admin" />
             </View>
           </>
         )}

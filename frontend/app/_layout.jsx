@@ -1,4 +1,5 @@
 import { AuthProvider } from '@/context/AuthContext';
+import { RoleBackHardwareGuard, RoleBackProvider } from '@/navigation/roleBack';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Stack } from 'expo-router';
@@ -10,7 +11,9 @@ export default function RootLayout() {
       <ThemeProvider>
         <AuthProvider>
           <LanguageProvider>
-          <Stack screenOptions={{ headerShown: false }}>
+            <RoleBackProvider>
+              <RoleBackHardwareGuard />
+              <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" />
@@ -28,9 +31,11 @@ export default function RootLayout() {
             <Stack.Screen name="saved-exams" />
             <Stack.Screen name="payment" />
           </Stack>
+            </RoleBackProvider>
           </LanguageProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
 }
+

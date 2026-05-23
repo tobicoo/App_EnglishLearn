@@ -198,7 +198,12 @@ async function createSection(input) {
   const isPublished = typeof input?.isPublished === "boolean" ? input.isPublished : true;
 
   const data = { title, subtitle, isPublished };
-  if (sortOrder) data.sortOrder = sortOrder;
+  if (sortOrder) {
+    data.sortOrder = sortOrder;
+  } else {
+    const maxSection = await prisma.section.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
+    data.sortOrder = (maxSection?.sortOrder ?? 0) + 1;
+  }
 
   return prisma.section.create({ data });
 }

@@ -1,6 +1,6 @@
 import { addExamQuestion, createExam, deleteExamQuestion } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useState } from 'react';
 import {
   Alert, ScrollView, StyleSheet, Text,
@@ -25,7 +25,7 @@ const EMPTY_MC_OPTIONS = [
 ];
 
 export default function CreateExamScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/settings');
   const { theme, isDark } = useTheme();
 
   // Phase 1 — exam details
@@ -144,7 +144,7 @@ export default function CreateExamScreen() {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Thêm câu hỏi</Text>
           <TouchableOpacity
             style={[styles.doneBtn, { backgroundColor: '#58cc02' }]}
-            onPress={() => router.back()}
+            onPress={() => goBack()}
           >
             <Text style={styles.doneBtnText}>Xong</Text>
           </TouchableOpacity>
@@ -299,7 +299,7 @@ export default function CreateExamScreen() {
           {questions.length > 0 && (
             <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: '#58cc02', marginTop: 24 }]}
-              onPress={() => router.back()}
+              onPress={() => goBack()}
             >
               <Text style={styles.submitText}>Hoàn thành ({questions.length} câu)</Text>
             </TouchableOpacity>
@@ -317,7 +317,7 @@ export default function CreateExamScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Tạo đề thi</Text>
@@ -474,3 +474,4 @@ const styles = StyleSheet.create({
   addNewBtn: { borderWidth: 2, borderStyle: 'dashed', borderRadius: 20, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   addNewBtnText: { fontSize: 15, fontWeight: '700' },
 });
+

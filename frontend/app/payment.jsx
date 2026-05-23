@@ -1,5 +1,6 @@
 import { createSubscription } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useTheme } from '@/context/ThemeContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -33,6 +34,7 @@ function formatExpiry(raw) {
 
 export default function PaymentScreen() {
   const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/home');
   const { theme, isDark } = useTheme();
   const { refreshUser } = useAuth();
   const params = useLocalSearchParams();
@@ -248,7 +250,7 @@ export default function PaymentScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Thanh toán</Text>
@@ -548,3 +550,4 @@ const styles = StyleSheet.create({
   },
   successBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
+

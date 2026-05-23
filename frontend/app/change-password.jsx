@@ -1,6 +1,6 @@
 import { useTheme } from '@/context/ThemeContext';
 import { changeCurrentUserPassword } from '@/services/api';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useState } from 'react';
 import {
   StyleSheet, Text, TextInput,
@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ChangePasswordScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/settings');
   const { theme } = useTheme();
 
   const [oldPassword, setOldPassword] = useState('');
@@ -43,14 +43,14 @@ export default function ChangePasswordScreen() {
     setNewPassword('');
     setConfirmPassword('');
     setMessage({ type: 'success', text: 'Đổi mật khẩu thành công!' });
-    setTimeout(() => router.back(), 900);
+    setTimeout(() => goBack(), 900);
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Đổi mật khẩu</Text>
@@ -105,7 +105,7 @@ export default function ChangePasswordScreen() {
           <View style={styles.btnRow}>
             <TouchableOpacity
               style={[styles.cancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={() => router.back()}
+              onPress={() => goBack()}
             >
               <Text style={[styles.cancelText, { color: theme.textSecondary }]}>Hủy</Text>
             </TouchableOpacity>
@@ -162,3 +162,4 @@ const styles = StyleSheet.create({
   disabledBtn: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
 });
+

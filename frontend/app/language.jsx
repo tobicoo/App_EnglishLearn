@@ -1,6 +1,6 @@
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import {
   Alert, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
@@ -21,7 +21,7 @@ const MORE_LANGS = [
 ];
 
 export default function LanguageScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/settings');
   const { theme } = useTheme();
   const { lang, setLanguage, t } = useLanguage();
 
@@ -32,7 +32,7 @@ export default function LanguageScreen() {
     }
     await setLanguage(code);
     Alert.alert(t('language_saved_title'), t('language_saved_msg'));
-    router.back();
+    goBack();
   };
 
   const LangItem = ({ item, disabled }) => {
@@ -69,7 +69,7 @@ export default function LanguageScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>{t('back')}</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>{t('language_title')}</Text>
@@ -116,3 +116,4 @@ const styles = StyleSheet.create({
   comingSoon: { fontSize: 12, marginTop: 2 },
   checkMark: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });
+

@@ -168,6 +168,7 @@ const AdminContent = forwardRef(function AdminContent({
   const selectedUnit = useMemo(() => selectedSection?.units?.find((u) => u.id === selectedUnitId) || null, [selectedSection, selectedUnitId]);
   const selectedExercise = useMemo(() => selectedUnit?.exercises?.find((e) => e.id === selectedExerciseId) || null, [selectedUnit, selectedExerciseId]);
   const selectedFlashcard = useMemo(() => selectedUnit?.flashcards?.find((f) => f.id === selectedFlashcardId) || null, [selectedUnit, selectedFlashcardId]);
+  const getNextSectionSortOrder = () => String(Math.max(0, ...sections.map((section) => Number(section.sortOrder ?? section.order) || 0)) + 1);
 
   const goSections = () => { setView('sections'); setSelectedSectionId(null); setSelectedUnitId(null); setSelectedExerciseId(null); setSelectedFlashcardId(null); };
   const goSection = (sectionId) => { setSelectedSectionId(sectionId); setView('section'); setSelectedUnitId(null); setSelectedExerciseId(null); setSelectedFlashcardId(null); };
@@ -408,7 +409,7 @@ const AdminContent = forwardRef(function AdminContent({
     <View>
       <View style={styles.rowBetween}>
         <Text style={styles.cardTitle}>Sections</Text>
-        <Pressable style={styles.smallButton} onPress={() => { setSectionForm({ title: '', subtitle: '', sortOrder: '1', isPublished: true }); setView('create-section'); }}>
+        <Pressable style={styles.smallButton} onPress={() => { setSectionForm({ title: '', subtitle: '', sortOrder: getNextSectionSortOrder(), isPublished: true }); setView('create-section'); }}>
           <Text style={styles.smallButtonText}>+ Thêm</Text>
         </Pressable>
       </View>

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useEffect, useState } from 'react';
 import {
   Alert, ScrollView, StyleSheet, Switch,
@@ -33,7 +33,7 @@ const ToggleRow = ({ icon, label, value, onValueChange, theme, last = false }) =
 );
 
 export default function AppSettingsScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/settings');
   const { isDark, toggleTheme, theme } = useTheme();
   const [prefs, setPrefs] = useState(defaultPrefs);
   const [saving, setSaving] = useState(false);
@@ -53,14 +53,14 @@ export default function AppSettingsScreen() {
     await AsyncStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
     setSaving(false);
     Alert.alert('Đã lưu', 'Cài đặt đã được cập nhật.');
-    router.back();
+    goBack();
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Cài đặt</Text>
@@ -146,3 +146,4 @@ const styles = StyleSheet.create({
   disabledBtn: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
+

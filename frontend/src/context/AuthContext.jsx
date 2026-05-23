@@ -11,6 +11,19 @@ const getHeartRefillIntervalSeconds = (user) => {
   return Number.isInteger(seconds) && seconds > 0 ? seconds : DEFAULT_HEART_REFILL_INTERVAL_SECONDS;
 };
 
+const withHeartMetadataReceivedAt = (user) => user && typeof user.secondsUntilNextHeart === 'number'
+  ? { ...user, heartMetadataReceivedAt: Date.now() }
+  : user;
+
+const getNextHeartDelayMs = (user) => {
+  if (typeof user?.secondsUntilNextHeart === 'number' && typeof user?.heartMetadataReceivedAt === 'number') {
+    return Math.max(user.secondsUntilNextHeart * 1000 - (Date.now() - user.heartMetadataReceivedAt), 0);
+  }
+
+  const nextHeartTime = user?.nextHeartAt ? new Date(user.nextHeartAt).getTime() : null;
+  return nextHeartTime ? Math.max(nextHeartTime - Date.now(), 0) : 0;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +39,7 @@ export function AuthProvider({ children }) {
 
         const storedUser = await getAuthUser();
         if (storedUser) {
-          setUser(storedUser);
+          setUser(withHeartMetadataReceivedAt(storedUser));
         }
 
         const { data, error } = await getCurrentUser();
@@ -35,8 +48,9 @@ export function AuthProvider({ children }) {
           setUser(null);
           return;
         }
-        await saveAuthUser(data);
-        setUser(data);
+        const freshUser = withHeartMetadataReceivedAt(data);
+        await saveAuthUser(freshUser);
+        setUser(freshUser);
       } catch (_e) {
         await clearAuthState();
         setUser(null);
@@ -52,8 +66,7 @@ export function AuthProvider({ children }) {
       return undefined;
     }
 
-    const nextHeartTime = new Date(user.nextHeartAt).getTime();
-    const delay = Math.max(nextHeartTime - Date.now() + 500, 1000);
+    const delay = getNextHeartDelayMs(user);
     const timer = setTimeout(() => {
       setUser((current) => {
         if (!current || current.hearts >= current.maxHearts) {
@@ -72,6 +85,7 @@ export function AuthProvider({ children }) {
           nextHeartAt,
           minutesUntilNextHeart: nextHeartAt ? Math.ceil(intervalSeconds / 60) : 0,
           secondsUntilNextHeart: nextHeartAt ? intervalSeconds : 0,
+          heartMetadataReceivedAt: Date.now(),
         };
         saveAuthUser(nextUser);
         return nextUser;
@@ -86,18 +100,20 @@ export function AuthProvider({ children }) {
     const { data, error } = await apiLogin(email, password);
     if (error) return { error };
     if (!data?.token || !data?.user) return { error: 'Email hoặc mật khẩu không đúng' };
-    await saveAuthState(data);
-    setUser(data.user);
-    return { data: data.user };
+    const authState = { ...data, user: withHeartMetadataReceivedAt(data.user) };
+    await saveAuthState(authState);
+    setUser(authState.user);
+    return { data: authState.user };
   };
 
   const register = async (userData) => {
     const { data, error } = await apiRegister(userData);
     if (error) return { data: null, error };
     if (!data?.token || !data?.user) return { data: null, error: 'Không thể tạo tài khoản' };
-    await saveAuthState(data);
-    setUser(data.user);
-    return { data: data.user, error: null };
+    const authState = { ...data, user: withHeartMetadataReceivedAt(data.user) };
+    await saveAuthState(authState);
+    setUser(authState.user);
+    return { data: authState.user, error: null };
   };
 
   const logout = async () => {
@@ -112,8 +128,9 @@ export function AuthProvider({ children }) {
       setUser(null);
       return;
     }
-    await saveAuthUser(data);
-    setUser(data);
+    const freshUser = withHeartMetadataReceivedAt(data);
+    await saveAuthUser(freshUser);
+    setUser(freshUser);
   };
 
   const updateUserLocally = (patch) => {

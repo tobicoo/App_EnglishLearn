@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "openapi:verify": "node scripts/verify-openapi.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:status": "prisma migrate status"
@@ -18,7 +19,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
-    "mariadb": "^3.5.2"
+    "mariadb": "^3.5.2",
+    "swagger-ui-express": "^5.0.1"
   },
   "private": true,
   "devDependencies": {

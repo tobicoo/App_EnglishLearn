@@ -1,10 +1,12 @@
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
 
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandlers");
 const adminRoutes = require("./routes/adminRoutes");
 const authRoutes = require("./routes/authRoutes");
 const contentRoutes = require("./routes/contentRoutes");
+const openapiSpec = require("./docs/openapi");
 const examRoutes = require("./routes/examRoutes");
 const historyRoutes = require("./routes/historyRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
@@ -38,6 +40,7 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.get("/health", (req, res) => {
   res.json({ ok: true });

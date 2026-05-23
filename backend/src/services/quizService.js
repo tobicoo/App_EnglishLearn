@@ -142,6 +142,7 @@ const validateAnswer = (exercise, body) => {
 };
 
 async function startUnitAttempt(userId, unitId) {
+  const now = new Date();
   const unit = await prisma.unit.findFirst({
     where: { id: unitId, isPublished: true, section: { isPublished: true } },
     select: { id: true },
@@ -151,11 +152,26 @@ async function startUnitAttempt(userId, unitId) {
     throw new ApiError(404, "UNIT_NOT_FOUND", "Unit not found");
   }
 
-  const unitAttempt = await prisma.unitAttempt.create({
-    data: { userId, unitId },
+  const [unitAttempt, user] = await prisma.$transaction(async (tx) => {
+    const createdAttempt = await tx.unitAttempt.create({
+      data: { userId, unitId },
+    });
+    const currentUser = await tx.user.findUnique({
+      where: { id: userId },
+      select: { id: true, hearts: true, maxHearts: true, heartRefilledAt: true },
+    });
+    if (!currentUser) {
+      throw new ApiError(401, "INVALID_TOKEN", "Token user no longer exists");
+    }
+    const refilledUser = await applyLazyHeartRefill(tx, currentUser, now);
+    return [createdAttempt, refilledUser];
   });
 
-  return { unitAttempt: toUnitAttemptDto(unitAttempt), unitAttemptId: unitAttempt.id };
+  return {
+    unitAttempt: toUnitAttemptDto(unitAttempt),
+    unitAttemptId: unitAttempt.id,
+    ...buildHeartMetadata(user, now),
+  };
 }
 
 async function submitExerciseAttempt(userId, exerciseId, body) {

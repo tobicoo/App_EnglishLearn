@@ -3,26 +3,54 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Tabs, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { BackHandler, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+const formatHeartSeconds = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
+const getSecondsUntilNextHeart = (user, nowMs) => {
+    if (typeof user?.secondsUntilNextHeart === "number" && typeof user?.heartMetadataReceivedAt === "number") {
+        const elapsedSeconds = Math.floor((nowMs - user.heartMetadataReceivedAt) / 1000);
+        return Math.max(user.secondsUntilNextHeart - elapsedSeconds, 0);
+    }
+
+    const nextHeartTime = user?.nextHeartAt
+        ? new Date(user.nextHeartAt).getTime()
+        : null;
+
+    return nextHeartTime
+        ? Math.max(Math.ceil((nextHeartTime - nowMs) / 1000), 0)
+        : null;
+};
 
 const getHeartLabel = (user, nowMs, t) => {
     const hearts = user?.hearts ?? 0;
     const maxHearts = user?.maxHearts ?? 5;
 
     if (hearts >= maxHearts) {
-        return t('hearts_full');
+        return t("hearts_full");
     }
 
-    const nextHeartTime = user?.nextHeartAt
-        ? new Date(user.nextHeartAt).getTime()
-        : null;
-    if (!nextHeartTime) {
-        return t('hearts_refilling');
+    const secondsUntilNext = getSecondsUntilNextHeart(user, nowMs);
+    if (secondsUntilNext === null) {
+        return t("hearts_refilling");
     }
 
-    const minutes = Math.max(Math.ceil((nextHeartTime - nowMs) / 60000), 0);
-    return minutes <= 0 ? t('hearts_almost') : t('hearts_next', { n: minutes });
+    if (secondsUntilNext <= 0) {
+        return t("hearts_almost");
+    }
+
+    if (secondsUntilNext < 600) {
+        return t("hearts_full_in_seconds", {
+            n: formatHeartSeconds(secondsUntilNext),
+        });
+    }
+
+    return t("hearts_full_in_minutes", { n: Math.ceil(secondsUntilNext / 60) });
 };
 
 export default function TabLayout() {
@@ -39,15 +67,9 @@ export default function TabLayout() {
         }
 
         setNowMs(Date.now());
-        const timer = setInterval(() => setNowMs(Date.now()), 60000);
+        const timer = setInterval(() => setNowMs(Date.now()), 1000);
         return () => clearInterval(timer);
     }, [showHeartInfo]);
-
-    useEffect(() => {
-        const onBackPress = () => true;
-        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-        return () => subscription.remove();
-    }, []);
 
     const hearts = user?.hearts ?? 0;
     const maxHearts = user?.maxHearts ?? 5;
@@ -71,12 +93,23 @@ export default function TabLayout() {
                     <Text style={[styles.stat, { color: theme.text }]}>
                         💎 {user?.gems || 0}
                     </Text>
-                    <TouchableOpacity onPress={() => setShowHeartInfo((value) => !value)}>
-                        <Text style={[styles.stat, styles.heartStat, { color: theme.text }]}>
+                    <TouchableOpacity
+                        onPress={() => setShowHeartInfo((value) => !value)}
+                    >
+                        <Text
+                            style={[
+                                styles.stat,
+                                styles.heartStat,
+                                { color: theme.text },
+                            ]}
+                        >
                             ❤️ {hearts}/{maxHearts}
                         </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.bellBtn}>
+                    <TouchableOpacity
+                        onPress={() => router.push("/notifications")}
+                        style={styles.bellBtn}
+                    >
                         <Text style={styles.bellIcon}>🔔</Text>
                     </TouchableOpacity>
                 </View>
@@ -110,7 +143,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="home"
                     options={{
-                        title: t('tab_study'),
+                        title: t("tab_study"),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>📚</Text>
                         ),
@@ -119,7 +152,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="english-pro"
                     options={{
-                        title: t('tab_english_pro'),
+                        title: t("tab_english_pro"),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>⭐</Text>
                         ),
@@ -128,7 +161,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="leaderboard"
                     options={{
-                        title: t('tab_leaderboard'),
+                        title: t("tab_leaderboard"),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>🏆</Text>
                         ),
@@ -137,7 +170,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="profile"
                     options={{
-                        title: t('tab_profile'),
+                        title: t("tab_profile"),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>👤</Text>
                         ),
@@ -146,7 +179,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="settings"
                     options={{
-                        title: t('tab_menu'),
+                        title: t("tab_menu"),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>☰</Text>
                         ),
@@ -169,7 +202,7 @@ const styles = StyleSheet.create({
     heartBubbleOverlay: {
         position: "absolute",
         top: 58,
-        right: 10,
+        right: 50,
         zIndex: 100,
         elevation: 100,
     },

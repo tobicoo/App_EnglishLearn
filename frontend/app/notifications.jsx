@@ -1,6 +1,6 @@
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator, FlatList, StyleSheet, Text,
@@ -26,7 +26,7 @@ const formatTime = (dateStr) => {
 };
 
 export default function NotificationsScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/home');
   const { theme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('Tất cả');
   const [notifications, setNotifications] = useState([]);
@@ -89,7 +89,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -180,3 +180,4 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
   emptyDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });
+

@@ -12,7 +12,7 @@ import {
   submitExerciseAttempt,
 } from '@/services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -38,27 +38,48 @@ const getInitialHeartInfo = (user) => ({
 });
 
 const getHeartInfoFromPayload = (payload, fallback) => ({
+  hearts: payload?.hearts ?? fallback.hearts,
   maxHearts: payload?.maxHearts ?? fallback.maxHearts,
   nextHeartAt: payload?.nextHeartAt ?? fallback.nextHeartAt,
+  secondsUntilNextHeart: payload?.secondsUntilNextHeart ?? fallback.secondsUntilNextHeart,
   minutesUntilNextHeart: payload?.minutesUntilNextHeart ?? fallback.minutesUntilNextHeart,
   heartRefillIntervalSeconds: payload?.heartRefillIntervalSeconds ?? fallback.heartRefillIntervalSeconds ?? 120,
+  heartMetadataReceivedAt: typeof payload?.secondsUntilNextHeart === 'number' ? Date.now() : fallback.heartMetadataReceivedAt,
 });
+
+const formatHeartSeconds = (seconds) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+};
 
 const getHeartCountdownLabel = (hearts, heartInfo, nowMs) => {
   if (hearts >= heartInfo.maxHearts) {
     return 'Đầy tim';
   }
 
-  const nextHeartTime = heartInfo.nextHeartAt ? new Date(heartInfo.nextHeartAt).getTime() : null;
-  const minutesUntilNextHeart = nextHeartTime
-    ? Math.max(Math.ceil((nextHeartTime - nowMs) / 60000), 0)
-    : heartInfo.minutesUntilNextHeart;
+  const secondsUntilNextHeart = typeof heartInfo.secondsUntilNextHeart === 'number' && typeof heartInfo.heartMetadataReceivedAt === 'number'
+    ? Math.max(heartInfo.secondsUntilNextHeart - Math.floor((nowMs - heartInfo.heartMetadataReceivedAt) / 1000), 0)
+    : Math.max(Number(heartInfo.secondsUntilNextHeart) || 0, 0);
 
-  if (minutesUntilNextHeart <= 0) {
+  if (secondsUntilNextHeart <= 0) {
     return 'Sắp hồi tim';
   }
 
-  return `Tim tiếp theo: ${minutesUntilNextHeart} phút`;
+  if (secondsUntilNextHeart < 600) {
+    return `Tim tiếp theo: ${formatHeartSeconds(secondsUntilNextHeart)}`;
+  }
+
+  return `Tim tiếp theo: ${Math.ceil(secondsUntilNextHeart / 60)} phút`;
+};
+
+const getNextHeartDelayMs = (heartInfo) => {
+  if (typeof heartInfo.secondsUntilNextHeart === 'number' && typeof heartInfo.heartMetadataReceivedAt === 'number') {
+    return Math.max(heartInfo.secondsUntilNextHeart * 1000 - (Date.now() - heartInfo.heartMetadataReceivedAt), 0);
+  }
+
+  const nextHeartTime = heartInfo.nextHeartAt ? new Date(heartInfo.nextHeartAt).getTime() : null;
+  return nextHeartTime ? Math.max(nextHeartTime - Date.now(), 0) : 0;
 };
 
 const getExerciseLabel = (type, hasOptions) => {
@@ -98,6 +119,10 @@ export default function QuizScreen() {
   const router = useRouter();
   const { unitId } = useLocalSearchParams();
   const { user, refreshUser } = useAuth();
+  const goToLearningPath = useCallback(() => {
+    router.dismissAll();
+    router.replace('/(tabs)/home');
+  }, [router]);
 
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,7 +173,7 @@ export default function QuizScreen() {
     }
 
     setHeartCountdownNow(Date.now());
-    const timer = setInterval(() => setHeartCountdownNow(Date.now()), 60000);
+    const timer = setInterval(() => setHeartCountdownNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [showHeartInfo]);
 
@@ -161,8 +186,7 @@ export default function QuizScreen() {
       return undefined;
     }
 
-    const nextHeartTime = new Date(heartInfo.nextHeartAt).getTime();
-    const delay = Math.max(nextHeartTime - Date.now() + 500, 1000);
+    const delay = getNextHeartDelayMs(heartInfo);
     const expectedNextHeartAt = heartInfo.nextHeartAt;
 
     heartTimerRef.current = setTimeout(() => {
@@ -180,6 +204,8 @@ export default function QuizScreen() {
           ? null
           : new Date(Date.now() + (currentInfo.heartRefillIntervalSeconds ?? 120) * 1000).toISOString(),
         minutesUntilNextHeart: nextHearts >= currentInfo.maxHearts ? 0 : Math.ceil((currentInfo.heartRefillIntervalSeconds ?? 120) / 60),
+        secondsUntilNextHeart: nextHearts >= currentInfo.maxHearts ? 0 : (currentInfo.heartRefillIntervalSeconds ?? 120),
+        heartMetadataReceivedAt: Date.now(),
       });
       refreshUser();
     }, delay);
@@ -244,8 +270,9 @@ export default function QuizScreen() {
 
     setQuestions(exercises || []);
     setUnitAttemptId(startedAttempt?.unitAttemptId || startedAttempt?.unitAttempt?.id || null);
-    setHearts(user?.hearts ?? GameConfig.MAX_HEARTS);
-    setHeartInfo(getInitialHeartInfo(user));
+    const initialHeartInfo = getHeartInfoFromPayload(startedAttempt || {}, getInitialHeartInfo(user));
+    setHearts(initialHeartInfo.hearts);
+    setHeartInfo(initialHeartInfo);
     setLoading(false);
   };
 
@@ -582,7 +609,7 @@ export default function QuizScreen() {
       <SafeAreaView style={[styles.container, styles.centerState]}>
         <Text style={styles.stateTitle}>{errorMessage ? 'Chưa tải được bài quiz' : 'Unit này chưa có câu hỏi'}</Text>
         <Text style={styles.stateText}>{errorMessage || 'Hãy quay lại lộ trình và chọn bài khác trong lúc chờ nội dung mới.'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={errorMessage ? loadQuiz : () => router.back()}>
+        <TouchableOpacity style={styles.retryBtn} onPress={errorMessage ? loadQuiz : goToLearningPath}>
           <Text style={styles.retryBtnText}>{errorMessage ? 'Thử lại' : 'Về lộ trình'}</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -603,7 +630,7 @@ export default function QuizScreen() {
         accuracy={resultSummary.accuracy}
         completionState={resultSummary.completionState}
         onNextUnit={nextUnitId ? () => router.replace({ pathname: '/quiz', params: { unitId: nextUnitId } }) : null}
-        onGoHome={() => router.back()}
+        onGoHome={goToLearningPath}
       />
     );
   }
@@ -624,7 +651,7 @@ export default function QuizScreen() {
         heartCountdownLabel={heartCountdownLabel}
         showHeartInfo={showHeartInfo}
         onToggleHeartInfo={() => setShowHeartInfo((value) => !value)}
-        onClose={() => router.back()}
+        onClose={goToLearningPath}
       />
 
       <Animated.View style={[styles.questionArea, shakeStyle]}>

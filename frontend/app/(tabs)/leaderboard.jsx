@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,15 +12,16 @@ export default function LeaderboardScreen() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
-      loadLeaderboard();
+      loadLeaderboard({ showLoading: !hasLoadedRef.current });
     }, [])
   );
 
-  const loadLeaderboard = async () => {
-    setLoading(true);
+  const loadLeaderboard = async ({ showLoading = true } = {}) => {
+    if (showLoading) setLoading(true);
     setErrorMessage('');
     const { data, error } = await getLeaderboard();
     if (error) {
@@ -29,6 +30,7 @@ export default function LeaderboardScreen() {
     } else {
       setPlayers(data);
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   };
 

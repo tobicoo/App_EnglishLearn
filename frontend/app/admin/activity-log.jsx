@@ -1,6 +1,6 @@
 import { getAdminActivityLog } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ const formatTime = (dateStr) => {
 };
 
 export default function ActivityLogScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/admin');
   const { theme } = useTheme();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,7 @@ export default function ActivityLogScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Nhật ký hoạt động</Text>
@@ -107,3 +107,4 @@ const styles = StyleSheet.create({
   clockIcon: { fontSize: 11 },
   time: { fontSize: 11 },
 });
+

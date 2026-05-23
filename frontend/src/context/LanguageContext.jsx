@@ -16,6 +16,8 @@ const translations = {
     hearts_refilling: 'Đang hồi tim',
     hearts_almost: 'Sắp hồi tim',
     hearts_next: 'Tim tiếp theo: {n} phút',
+    hearts_full_in_seconds: 'Tim đầy sau: {n}',
+    hearts_full_in_minutes: 'Tim đầy sau: {n} phút',
 
     // Menu / Settings screen
     section_account: 'TÀI KHOẢN',
@@ -74,6 +76,8 @@ const translations = {
     hearts_refilling: 'Refilling...',
     hearts_almost: 'Almost ready',
     hearts_next: 'Next heart: {n} min',
+    hearts_full_in_seconds: 'Full hearts in: {n}',
+    hearts_full_in_minutes: 'Full hearts in: {n} min',
 
     // Menu / Settings screen
     section_account: 'ACCOUNT',

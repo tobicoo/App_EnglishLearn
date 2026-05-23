@@ -13,6 +13,7 @@ export default function ProfileScreen() {
   const { t } = useLanguage();
   const [loadingProfile, setLoadingProfile] = useState(!user);
   const [profileError, setProfileError] = useState('');
+  const hasLoadedRef = useRef(Boolean(user));
   const refreshUserRef = useRef(refreshUser);
 
   useEffect(() => {
@@ -20,13 +21,14 @@ export default function ProfileScreen() {
   }, [refreshUser]);
 
   const loadProfile = useCallback(async () => {
-    setLoadingProfile(true);
+    if (!hasLoadedRef.current) setLoadingProfile(true);
     setProfileError('');
     try {
       await refreshUserRef.current();
     } catch (error) {
       setProfileError(error?.message || 'Không thể cập nhật hồ sơ.');
     } finally {
+      hasLoadedRef.current = true;
       setLoadingProfile(false);
     }
   }, []);

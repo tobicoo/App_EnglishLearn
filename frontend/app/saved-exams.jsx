@@ -1,6 +1,6 @@
 import { getSavedExams, removeExamBookmark } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator, FlatList, StyleSheet, Text, TextInput,
@@ -17,7 +17,7 @@ const DIFF_COLORS = {
 };
 
 export default function SavedExamsScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/settings');
   const { theme } = useTheme();
   const [search, setSearch] = useState('');
   const [savedItems, setSavedItems] = useState([]);
@@ -77,7 +77,7 @@ export default function SavedExamsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Đề đã lưu</Text>
@@ -169,3 +169,4 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
   emptyDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });
+

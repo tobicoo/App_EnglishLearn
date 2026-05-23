@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { updateUser } from '@/services/api';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useState } from 'react';
 import {
   Alert, ScrollView, StyleSheet, Text,
@@ -16,7 +16,7 @@ const AVATAR_OPTIONS = [
 ];
 
 export default function ProfileInfoScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/settings');
   const { user, refreshUser } = useAuth();
   const { theme } = useTheme();
 
@@ -41,7 +41,7 @@ export default function ProfileInfoScreen() {
     }
     await refreshUser();
     setMessage({ type: 'success', text: 'Cập nhật thành công!' });
-    setTimeout(() => router.back(), 800);
+    setTimeout(() => goBack(), 800);
   };
 
   const handleDeleteAccount = () => {
@@ -59,7 +59,7 @@ export default function ProfileInfoScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.surface }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Thông tin cá nhân</Text>
@@ -212,3 +212,4 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { color: '#ff4b4b', fontWeight: 'bold', fontSize: 14 },
 });
+

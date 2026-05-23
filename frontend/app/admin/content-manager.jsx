@@ -23,7 +23,7 @@ import {
   updateAdminSection,
   updateAdminUnit,
 } from '@/services/api';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, BackHandler,
@@ -41,7 +41,7 @@ const showValue = (v) => (v === null || v === undefined ? '' : String(v));
 const DEFAULT_MATCHING_PROMPT = 'Nối các cặp phù hợp';
 
 export default function ContentManagerScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/admin');
   const { theme } = useTheme();
   const { logout, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState('settings');
@@ -62,10 +62,11 @@ export default function ContentManagerScreen() {
         const handled = adminContentRef.current?.goBackOneLevel?.();
         if (handled) return true;
       }
+      goBack();
       return true;
     });
     return () => sub.remove();
-  }, [activeTab]);
+  }, [activeTab, goBack]);
 
   const loadData = useCallback(async ({ showLoading = true, updateStatus = true } = {}) => {
     if (showLoading) setLoading(true);
@@ -197,7 +198,7 @@ export default function ContentManagerScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => { if (activeTab === 'content') { adminContentRef.current?.goBackOneLevel?.(); } else { router.back(); } }} style={styles.backBtn}>
+        <Pressable onPress={() => { if (activeTab !== 'content' || !adminContentRef.current?.goBackOneLevel?.()) { goBack(); } }} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Quản lý nội dung</Text>
@@ -283,3 +284,4 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 13 },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
 });
+

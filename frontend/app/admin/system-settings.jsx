@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import { useEffect, useState } from 'react';
 import {
   Alert, StyleSheet, Switch, Text,
@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const ADMIN_PREFS_KEY = 'admin_system_prefs';
 
 export default function SystemSettingsScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/admin');
   const { isDark, toggleTheme, theme } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,13 +32,13 @@ export default function SystemSettingsScreen() {
     await AsyncStorage.setItem(ADMIN_PREFS_KEY, JSON.stringify({ notifications: notificationsEnabled }));
     setSaving(false);
     Alert.alert('✅ Đã lưu', 'Cấu hình hệ thống đã được cập nhật.');
-    router.back();
+    goBack();
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Quay lại</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Cài đặt hệ thống</Text>
@@ -112,3 +112,4 @@ const styles = StyleSheet.create({
   disabledBtn: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
+

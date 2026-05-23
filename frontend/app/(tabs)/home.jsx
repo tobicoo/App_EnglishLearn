@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { ScrollView, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -42,19 +42,21 @@ export default function HomeScreen() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData({ showLoading: !hasLoadedRef.current });
     }, [user?.id])
   );
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async ({ showLoading = true } = {}) => {
+    if (showLoading) setLoading(true);
     setErrorMessage('');
     if (!user?.id) {
       setSections([]);
       setErrorMessage('Bạn cần đăng nhập để xem lộ trình học.');
+      hasLoadedRef.current = true;
       setLoading(false);
       return;
     }
@@ -65,6 +67,7 @@ export default function HomeScreen() {
     } else {
       setSections(data);
     }
+    hasLoadedRef.current = true;
     setLoading(false);
   };
 

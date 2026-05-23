@@ -371,9 +371,7 @@ export default function AdminDashboard() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Top bar */}
       <View style={[styles.topBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/settings')} style={styles.backBtn}>
-          <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Thoát</Text>
-        </TouchableOpacity>
+        <View style={styles.backBtn} />
         <View style={styles.topCenter}>
           <Text style={[styles.topTitle, { color: theme.text }]}>🛡️ Admin</Text>
         </View>
@@ -478,3 +476,4 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 10, marginTop: 2, fontWeight: '600' },
   tabDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#1cb0f6', marginTop: 2 },
 });
+

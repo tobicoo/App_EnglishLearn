@@ -1,6 +1,6 @@
 import { getAllFlashcards } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRoleBack } from '@/navigation/roleBack';
 import * as Speech from 'expo-speech';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -8,7 +8,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function FlashcardScreen() {
-  const router = useRouter();
+  const { goBack } = useRoleBack('/(tabs)/home');
   
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export default function FlashcardScreen() {
       <SafeAreaView style={[styles.container, styles.centerState]}>
         <Text style={styles.stateTitle}>{loadError ? 'Chưa tải được flashcard' : 'Chưa có flashcard'}</Text>
         <Text style={styles.stateText}>{loadError || 'Unit này chưa có thẻ từ vựng để luyện tập.'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={loadError ? loadFlashcards : () => router.back()}>
+        <TouchableOpacity style={styles.retryBtn} onPress={loadError ? loadFlashcards : () => goBack()}>
           <Text style={styles.retryBtnText}>{loadError ? 'Thử lại' : 'Quay lại'}</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -82,7 +82,7 @@ export default function FlashcardScreen() {
       setTimeout(() => setCurrentIndex(currentIndex + 1), 250);
     } else {
       Alert.alert("Chúc mừng!", "Bạn đã hoàn thành tất cả flashcards!", [
-        { text: "OK", onPress: () => router.back() }
+        { text: "OK", onPress: () => goBack() }
       ]);
     }
   };
@@ -91,7 +91,7 @@ export default function FlashcardScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header & Progress Bar */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => goBack()}>
           <Ionicons name="close" size={30} color="#afafaf" />
         </TouchableOpacity>
         
@@ -175,3 +175,4 @@ const styles = StyleSheet.create({
   continueText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   counterText: { textAlign: 'center', color: '#afafaf', fontWeight: 'bold', marginBottom: 15 }
 });
+
