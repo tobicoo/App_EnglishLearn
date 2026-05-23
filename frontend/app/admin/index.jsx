@@ -78,7 +78,7 @@ const sc = StyleSheet.create({
 // ─── Tab screens ───────────────────────────────────────────────────
 function HomeTab({ stats, adminStats, loading, theme }) {
   if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#1cb0f6" /></View>;
-  const avgScore = adminStats?.avgScore ?? 0;
+  const avgScore = Number(adminStats?.avgScore ?? 0);
   const monthlyAttempts = adminStats?.monthlyAttempts ?? Array(12).fill(0);
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
@@ -246,8 +246,8 @@ function LessonsTab({ sections, loading, theme }) {
 }
 
 function RevenueTab({ theme, adminStats }) {
-  const revenueThisMonth = adminStats?.revenueThisMonth ?? 0;
-  const totalRevenue = adminStats?.totalRevenue ?? 0;
+  const revenueThisMonth = Number(adminStats?.revenueThisMonth ?? 0);
+  const totalRevenue = Number(adminStats?.totalRevenue ?? 0);
   const revenueByType = adminStats?.revenueByType ?? [];
   const monthlyAttempts = adminStats?.monthlyAttempts ?? Array(12).fill(0);
   const activeSubscriptions = adminStats?.activeSubscriptions ?? 0;

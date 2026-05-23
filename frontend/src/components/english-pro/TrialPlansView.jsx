@@ -30,7 +30,7 @@ export default function TrialPlansView({ selectedPlan, onSelectPlan, onShowAllPl
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.trialHero}>
                     <View style={styles.topBar}>
-                        <Pressable onPress={() => router.replace('/home')} hitSlop={12} style={styles.closeButton}>
+                        <Pressable onPress={() => router.replace('/(tabs)/home')} hitSlop={12} style={styles.closeButton}>
                             <Text style={styles.closeText}>×</Text>
                         </Pressable>
 
