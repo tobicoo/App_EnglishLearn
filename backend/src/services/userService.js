@@ -102,13 +102,16 @@ function buildProfileUpdate(input) {
   return update;
 }
 
-async function getLeaderboard() {
+async function getLeaderboard({ limit = 50 } = {}) {
+  const take = Math.min(Math.max(1, Number(limit) || 50), 100);
+
   const users = await prisma.user.findMany({
     orderBy: [
       { totalXp: "desc" },
       { name: "asc" },
       { id: "asc" },
     ],
+    take,
   });
 
   return users.map((user, index) => toLeaderboardEntryDto(user, index + 1));

@@ -19,8 +19,13 @@ router.delete("/units/:id", adminController.deleteUnit);
 router.post("/exercises", adminController.createExercise);
 router.patch("/exercises/:id", adminController.updateExercise);
 router.delete("/exercises/:id", adminController.deleteExercise);
+router.post("/flashcards", adminController.createFlashcard);
+router.patch("/flashcards/:id", adminController.updateFlashcard);
+router.delete("/flashcards/:id", adminController.deleteFlashcard);
 router.get("/users", adminController.users);
 router.patch("/users/:id/password", adminController.resetPassword);
 router.post("/users/:id/progress/reset", adminController.resetProgress);
+router.get("/stats", adminController.stats);
+router.get("/activity-log", adminController.activityLog);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 const showValue = (value) => (value === null || value === undefined ? '' : String(value));
 
@@ -97,6 +97,26 @@ function MatchingPreview({ pairs }) {
   );
 }
 
+function FlashcardImagePreview({ url }) {
+  const [error, setError] = useState(false);
+  if (!url || !url.trim()) return null;
+  return (
+    <View style={styles.imagePreviewBox}>
+      {error ? (
+        <Text style={styles.imagePreviewError}>URL ảnh không hợp lệ hoặc không tải được</Text>
+      ) : (
+        <Image
+          source={{ uri: url.trim() }}
+          style={styles.imagePreview}
+          resizeMode="cover"
+          onError={() => setError(true)}
+          onLoad={() => setError(false)}
+        />
+      )}
+    </View>
+  );
+}
+
 function Breadcrumb({ items, onPress }) {
   return (
     <View style={styles.breadcrumbRow}>
@@ -125,11 +145,15 @@ const AdminContent = forwardRef(function AdminContent({
   onSaveExercise,
   onCreateExercise,
   onDeleteExercise,
+  onSaveFlashcard,
+  onCreateFlashcard,
+  onDeleteFlashcard,
 }, ref) {
-  const [view, setView] = useState('sections'); // sections | section | unit | exercise
+  const [view, setView] = useState('sections');
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedUnitId, setSelectedUnitId] = useState(null);
   const [selectedExerciseId, setSelectedExerciseId] = useState(null);
+  const [selectedFlashcardId, setSelectedFlashcardId] = useState(null);
 
   // Forms
   const [sectionForm, setSectionForm] = useState({ title: '', subtitle: '', sortOrder: '1', isPublished: true });
@@ -138,21 +162,26 @@ const AdminContent = forwardRef(function AdminContent({
   const [optionForms, setOptionForms] = useState([]);
   const [acceptedAnswerForms, setAcceptedAnswerForms] = useState([{ text: '' }]);
   const [matchingPairForms, setMatchingPairForms] = useState([]);
+  const [flashcardForm, setFlashcardForm] = useState({ word: '', phonetic: '', meaning: '', imageUrl: '', sortOrder: '1' });
 
   const selectedSection = useMemo(() => sections.find((s) => s.id === selectedSectionId) || null, [sections, selectedSectionId]);
   const selectedUnit = useMemo(() => selectedSection?.units?.find((u) => u.id === selectedUnitId) || null, [selectedSection, selectedUnitId]);
   const selectedExercise = useMemo(() => selectedUnit?.exercises?.find((e) => e.id === selectedExerciseId) || null, [selectedUnit, selectedExerciseId]);
+  const selectedFlashcard = useMemo(() => selectedUnit?.flashcards?.find((f) => f.id === selectedFlashcardId) || null, [selectedUnit, selectedFlashcardId]);
 
-  const goSections = () => { setView('sections'); setSelectedSectionId(null); setSelectedUnitId(null); setSelectedExerciseId(null); };
-  const goSection = (sectionId) => { setSelectedSectionId(sectionId); setView('section'); setSelectedUnitId(null); setSelectedExerciseId(null); };
-  const goUnit = (unitId) => { setSelectedUnitId(unitId); setView('unit'); setSelectedExerciseId(null); };
+  const goSections = () => { setView('sections'); setSelectedSectionId(null); setSelectedUnitId(null); setSelectedExerciseId(null); setSelectedFlashcardId(null); };
+  const goSection = (sectionId) => { setSelectedSectionId(sectionId); setView('section'); setSelectedUnitId(null); setSelectedExerciseId(null); setSelectedFlashcardId(null); };
+  const goUnit = (unitId) => { setSelectedUnitId(unitId); setView('unit'); setSelectedExerciseId(null); setSelectedFlashcardId(null); };
   const goExercise = (exerciseId) => { setSelectedExerciseId(exerciseId); setView('exercise'); };
+  const goFlashcard = (flashcardId) => { setSelectedFlashcardId(flashcardId); setView('flashcard'); };
 
   const goBackOneLevel = useCallback(() => {
     if (view === 'create-section') { goSections(); return true; }
     if (view === 'create-unit') { goSection(selectedSectionId); return true; }
     if (view === 'create-exercise') { goUnit(selectedUnitId); return true; }
+    if (view === 'create-flashcard') { goUnit(selectedUnitId); return true; }
     if (view === 'exercise') { goUnit(selectedUnitId); return true; }
+    if (view === 'flashcard') { goUnit(selectedUnitId); return true; }
     if (view === 'unit') { goSection(selectedSectionId); return true; }
     if (view === 'section') { goSections(); return true; }
     return false;
@@ -203,6 +232,16 @@ const AdminContent = forwardRef(function AdminContent({
       leftText: showValue(pair.leftText),
       rightText: showValue(pair.rightText),
     })));
+  };
+
+  const populateFlashcardForm = (flashcard) => {
+    setFlashcardForm({
+      word: showValue(flashcard.word),
+      phonetic: showValue(flashcard.phonetic),
+      meaning: showValue(flashcard.meaning),
+      imageUrl: showValue(flashcard.imageUrl),
+      sortOrder: showValue(flashcard.sortOrder ?? 1),
+    });
   };
 
   const selectExerciseType = (nextType) => {
@@ -317,6 +356,35 @@ const AdminContent = forwardRef(function AdminContent({
         const ok = await onDeleteExercise(exercise.id);
         if (!ok) return;
         onSetStatus('success', 'Đã xóa câu hỏi.');
+        goUnit(selectedUnit.id);
+      }},
+    ]);
+  };
+
+  const doCreateFlashcard = async () => {
+    if (!selectedUnit) return;
+    if (!flashcardForm.word.trim()) { onSetStatus('error', 'Từ vựng là bắt buộc.'); return; }
+    if (!flashcardForm.meaning.trim()) { onSetStatus('error', 'Nghĩa là bắt buộc.'); return; }
+    const data = await onCreateFlashcard({
+      unitId: selectedUnit.id,
+      word: flashcardForm.word.trim(),
+      phonetic: flashcardForm.phonetic.trim() || null,
+      meaning: flashcardForm.meaning.trim(),
+      imageUrl: flashcardForm.imageUrl.trim() || null,
+      sortOrder: Number(flashcardForm.sortOrder) || 1,
+    });
+    if (!data) return;
+    onSetStatus('success', 'Đã tạo flashcard mới.');
+    if (data?.id) goFlashcard(data.id);
+  };
+
+  const doDeleteFlashcard = (flashcard) => {
+    Alert.alert('Xóa flashcard', `Xóa flashcard "${flashcard.word}"?`, [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Xóa', style: 'destructive', onPress: async () => {
+        const ok = await onDeleteFlashcard(flashcard.id);
+        if (!ok) return;
+        onSetStatus('success', 'Đã xóa flashcard.');
         goUnit(selectedUnit.id);
       }},
     ]);
@@ -514,6 +582,28 @@ const AdminContent = forwardRef(function AdminContent({
           );
         })}
         {(selectedUnit.exercises || []).length === 0 ? <Text style={styles.emptyText}>Chưa có câu hỏi.</Text> : null}
+
+        <View style={styles.divider} />
+        <View style={styles.rowBetween}>
+          <Text style={styles.cardTitle}>Flashcards trong unit</Text>
+          <Pressable style={styles.smallButton} onPress={() => {
+            setFlashcardForm({ word: '', phonetic: '', meaning: '', imageUrl: '', sortOrder: String((selectedUnit.flashcards?.length || 0) + 1) });
+            setView('create-flashcard');
+          }}>
+            <Text style={styles.smallButtonText}>+ Thêm</Text>
+          </Pressable>
+        </View>
+        {(selectedUnit.flashcards || []).map((flashcard) => (
+          <Pressable key={flashcard.id} style={styles.listItem} onPress={() => { populateFlashcardForm(flashcard); goFlashcard(flashcard.id); }}>
+            <View style={styles.listItemRow}>
+              <View style={styles.listItemMain}>
+                <Text style={styles.listItemTitle}>{flashcard.word}</Text>
+                <Text style={styles.listItemSub}>{flashcard.phonetic ? `${flashcard.phonetic} · ` : ''}{flashcard.meaning}</Text>
+              </View>
+            </View>
+          </Pressable>
+        ))}
+        {(selectedUnit.flashcards || []).length === 0 ? <Text style={styles.emptyText}>Chưa có flashcard.</Text> : null}
       </View>
     );
   };
@@ -691,6 +781,68 @@ const AdminContent = forwardRef(function AdminContent({
     );
   };
 
+  const renderCreateFlashcard = () => {
+    if (!selectedUnit) return null;
+    return (
+      <View>
+        <Breadcrumb
+          items={[
+            { key: 'sections', label: 'Sections' },
+            { key: 'section', label: selectedSection?.title || 'Section' },
+            { key: 'unit', label: selectedUnit.title || `Unit ${selectedUnit.sortOrder}` },
+          ]}
+          onPress={(idx) => { if (idx === 0) goSections(); else if (idx === 1) goSection(selectedSection.id); else goUnit(selectedUnit.id); }}
+        />
+        <Text style={[styles.cardTitle, { marginTop: 12 }]}>Tạo flashcard mới</Text>
+        <Field label="Từ vựng *" value={flashcardForm.word} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, word: t }))} />
+        <Field label="Phiên âm" value={flashcardForm.phonetic} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, phonetic: t }))} />
+        <Field label="Nghĩa *" value={flashcardForm.meaning} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, meaning: t }))} />
+        <Field label="URL ảnh" value={flashcardForm.imageUrl} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, imageUrl: t }))} />
+        <FlashcardImagePreview url={flashcardForm.imageUrl} />
+        <Field label="Thứ tự" value={flashcardForm.sortOrder} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, sortOrder: t }))} keyboardType="number-pad" />
+        <Pressable style={[styles.primaryButton, savingKey === 'create-flashcard' && styles.disabledButton]} onPress={doCreateFlashcard} disabled={savingKey === 'create-flashcard'}>
+          <Text style={styles.primaryButtonText}>{savingKey === 'create-flashcard' ? 'Đang tạo...' : 'Tạo flashcard'}</Text>
+        </Pressable>
+      </View>
+    );
+  };
+
+  const renderFlashcardDetail = () => {
+    if (!selectedFlashcard) return null;
+    return (
+      <View>
+        <Breadcrumb
+          items={[
+            { key: 'sections', label: 'Sections' },
+            { key: 'section', label: selectedSection?.title || 'Section' },
+            { key: 'unit', label: selectedUnit?.title || `Unit ${selectedUnit?.sortOrder}` },
+            { key: 'flashcard', label: selectedFlashcard.word },
+          ]}
+          onPress={(idx) => {
+            if (idx === 0) goSections();
+            else if (idx === 1) goSection(selectedSection.id);
+            else if (idx === 2) goUnit(selectedUnit.id);
+          }}
+        />
+        <View style={styles.rowBetween}>
+          <Text style={[styles.cardTitle, { marginTop: 12 }]}>Chỉnh sửa flashcard</Text>
+          <Pressable style={styles.inlineDelete} onPress={() => doDeleteFlashcard(selectedFlashcard)}>
+            <Text style={styles.inlineDeleteText}>Xóa flashcard</Text>
+          </Pressable>
+        </View>
+        <Field label="Từ vựng" value={flashcardForm.word} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, word: t }))} />
+        <Field label="Phiên âm" value={flashcardForm.phonetic} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, phonetic: t }))} />
+        <Field label="Nghĩa" value={flashcardForm.meaning} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, meaning: t }))} />
+        <Field label="URL ảnh" value={flashcardForm.imageUrl} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, imageUrl: t }))} />
+        <FlashcardImagePreview url={flashcardForm.imageUrl} />
+        <Field label="Thứ tự" value={flashcardForm.sortOrder} onChangeText={(t) => setFlashcardForm((c) => ({ ...c, sortOrder: t }))} keyboardType="number-pad" />
+        <Pressable style={[styles.primaryButton, savingKey === 'flashcard' && styles.disabledButton]} onPress={() => onSaveFlashcard(selectedFlashcard.id, flashcardForm)} disabled={savingKey === 'flashcard'}>
+          <Text style={styles.primaryButtonText}>{savingKey === 'flashcard' ? 'Đang lưu...' : 'Lưu flashcard'}</Text>
+        </Pressable>
+      </View>
+    );
+  };
+
   const views = {
     sections: renderSectionsList,
     'create-section': renderCreateSection,
@@ -699,6 +851,8 @@ const AdminContent = forwardRef(function AdminContent({
     unit: renderUnitDetail,
     'create-exercise': renderCreateExercise,
     exercise: renderExerciseDetail,
+    'create-flashcard': renderCreateFlashcard,
+    flashcard: renderFlashcardDetail,
   };
 
   return (
@@ -759,6 +913,9 @@ const styles = StyleSheet.create({
   nestedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   nestedTitle: { fontSize: 15, fontWeight: '900', color: '#1D1B20' },
   nestedRow: { marginTop: 8, padding: 10, borderRadius: 16, backgroundColor: '#FFFBFE', borderWidth: 1, borderColor: '#E7E0EC' },
+  imagePreviewBox: { marginTop: 10, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#CAC4D0', height: 160, backgroundColor: '#F7F2FA', justifyContent: 'center', alignItems: 'center' },
+  imagePreview: { width: '100%', height: '100%' },
+  imagePreviewError: { fontSize: 13, color: '#B3261E', textAlign: 'center', paddingHorizontal: 16 },
   previewBox: { marginTop: 12, borderRadius: 16, backgroundColor: '#F7F2FA', borderWidth: 1, borderColor: '#E7E0EC', padding: 12 },
   previewTitle: { color: '#4F378B', fontSize: 13, fontWeight: '900', marginBottom: 8 },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },

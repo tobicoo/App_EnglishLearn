@@ -9,6 +9,7 @@ const trialPlans = [
         subtitle: '12 th • 899.000 đ',
         price: '74.916,67 đ / THÁNG',
         popular: false,
+        paymentParams: { planName: 'Gia đình 12 tháng', price: '899.000 đ', period: 'năm', planKey: 'yearly' },
     },
     {
         id: 'personal',
@@ -16,6 +17,7 @@ const trialPlans = [
         subtitle: '12 th • 689.000 đ',
         price: '57.416,67 đ / THÁNG',
         popular: true,
+        paymentParams: { planName: 'Cá nhân 12 tháng', price: '689.000 đ', period: 'năm', planKey: 'yearly' },
     },
 ];
 
@@ -95,7 +97,13 @@ export default function TrialPlansView({ selectedPlan, onSelectPlan, onShowAllPl
 
                     <Text style={styles.cancelText}>Hủy bất kỳ lúc nào trong App Store</Text>
 
-                    <Pressable style={styles.primaryTrialButton} onPress={() => { }}>
+                    <Pressable
+                        style={styles.primaryTrialButton}
+                        onPress={() => {
+                            const plan = trialPlans.find((p) => p.id === selectedPlan) ?? trialPlans[1];
+                            router.push({ pathname: '/payment', params: plan.paymentParams });
+                        }}
+                    >
                         <Text style={styles.primaryTrialButtonText}>
                             {selectedPlan === 'family' ? 'DÙNG THỬ GÓI GIA ĐÌNH VỚI GIÁ 0 đ' : 'DÙNG THỬ GÓI CÁ NHÂN VỚI GIÁ 0 đ'}
                         </Text>

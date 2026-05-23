@@ -2,7 +2,7 @@ const userService = require("../services/userService");
 
 async function leaderboard(req, res, next) {
   try {
-    const leaderboardData = await userService.getLeaderboard();
+    const leaderboardData = await userService.getLeaderboard({ limit: req.query.limit });
     res.json({ leaderboard: leaderboardData });
   } catch (error) {
     next(error);

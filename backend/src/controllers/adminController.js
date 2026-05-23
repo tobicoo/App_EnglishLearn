@@ -16,6 +16,31 @@ async function createUnit(req, res, next) {
   }
 }
 
+async function createFlashcard(req, res, next) {
+  try {
+    res.json({ flashcard: await adminService.createFlashcard(req.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateFlashcard(req, res, next) {
+  try {
+    res.json({ flashcard: await adminService.updateFlashcard(req.params.id, req.body || {}) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteFlashcard(req, res, next) {
+  try {
+    await adminService.deleteFlashcard(req.params.id);
+    res.json({ deleted: true });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function createExercise(req, res, next) {
   try {
     res.json({ exercise: await adminService.createExercise(req.body || {}) });
@@ -123,18 +148,40 @@ async function resetProgress(req, res, next) {
   }
 }
 
+async function stats(req, res, next) {
+  try {
+    res.json(await adminService.getStats());
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function activityLog(req, res, next) {
+  try {
+    const logs = await adminService.getActivityLog({ limit: req.query.limit });
+    res.json({ logs });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+  activityLog,
   content,
+  stats,
   createExercise,
+  createFlashcard,
   createSection,
   createUnit,
   deleteExercise,
+  deleteFlashcard,
   deleteSection,
   deleteUnit,
   getHeartbeatSetting,
   resetPassword,
   resetProgress,
   updateExercise,
+  updateFlashcard,
   updateHeartbeatSetting,
   updateSection,
   updateUnit,

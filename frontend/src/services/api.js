@@ -389,6 +389,49 @@ export async function deleteAdminUnit(unitId) {
   }
 }
 
+export async function createAdminFlashcard(data) {
+  try {
+    const res = await apiJsonRequest('/api/admin/flashcards', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tạo flashcard') };
+    const payload = await res.json();
+    return { data: payload?.flashcard || null, error: payload?.flashcard ? null : 'Không thể tạo flashcard' };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tạo flashcard' };
+  }
+}
+
+export async function updateAdminFlashcard(flashcardId, data) {
+  try {
+    const res = await apiJsonRequest(`/api/admin/flashcards/${flashcardId}`, {
+      method: 'PATCH',
+      requireAuth: true,
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể cập nhật flashcard') };
+    const payload = await res.json();
+    return { data: payload?.flashcard || null, error: payload?.flashcard ? null : 'Không thể cập nhật flashcard' };
+  } catch (_e) {
+    return { data: null, error: 'Không thể cập nhật flashcard' };
+  }
+}
+
+export async function deleteAdminFlashcard(flashcardId) {
+  try {
+    const res = await apiJsonRequest(`/api/admin/flashcards/${flashcardId}`, {
+      method: 'DELETE',
+      requireAuth: true,
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể xóa flashcard') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể xóa flashcard' };
+  }
+}
+
 export async function deleteAdminExercise(exerciseId) {
   try {
     const res = await apiJsonRequest(`/api/admin/exercises/${exerciseId}`, {
@@ -459,7 +502,7 @@ export async function getSectionsWithUnits() {
 
 export async function updateUnit(unitId, data) {
   try {
-    const res = await apiJsonRequest(`/units/${unitId}`, {
+    const res = await apiJsonRequest(`/api/units/${unitId}`, {
       method: 'PATCH',
       requireAuth: true,
       body: JSON.stringify(data),
@@ -572,14 +615,245 @@ export async function getUnitExercises(unitId) {
 
 // ==================== LEADERBOARD ====================
 
-export async function getLeaderboard() {
+export async function getLeaderboard({ limit = 50 } = {}) {
   try {
-    const res = await apiRequest('/api/leaderboard');
+    const res = await apiRequest(`/api/leaderboard?limit=${limit}`);
     if (!res.ok) return { data: null, error: 'Không thể tải bảng xếp hạng' };
 
     const payload = await res.json();
     return { data: payload?.leaderboard || [], error: null };
   } catch (_e) {
     return { data: null, error: 'Không thể tải bảng xếp hạng' };
+  }
+}
+
+// ==================== HISTORY ====================
+
+export async function getLearningHistory({ limit = 20, offset = 0 } = {}) {
+  try {
+    const res = await apiRequest(`/api/users/me/history/learning?limit=${limit}&offset=${offset}`, { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải lịch sử học') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải lịch sử học' };
+  }
+}
+
+export async function getCreatedHistory({ limit = 20, offset = 0 } = {}) {
+  try {
+    const res = await apiRequest(`/api/users/me/history/created?limit=${limit}&offset=${offset}`, { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải lịch sử tạo đề') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải lịch sử tạo đề' };
+  }
+}
+
+// ==================== NOTIFICATIONS ====================
+
+export async function getNotifications({ type } = {}) {
+  try {
+    const query = type ? `?type=${type}` : '';
+    const res = await apiRequest(`/api/notifications${query}`, { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải thông báo') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải thông báo' };
+  }
+}
+
+export async function markNotificationRead(notificationId) {
+  try {
+    const res = await apiJsonRequest(`/api/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+      requireAuth: true,
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể đánh dấu đã đọc') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể đánh dấu đã đọc' };
+  }
+}
+
+export async function markAllNotificationsRead() {
+  try {
+    const res = await apiJsonRequest('/api/notifications/read-all', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể đánh dấu tất cả đã đọc') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể đánh dấu tất cả đã đọc' };
+  }
+}
+
+// ==================== EXAMS ====================
+
+export async function getPublicExams({ category, difficulty, search, limit = 20, offset = 0 } = {}) {
+  try {
+    const params = new URLSearchParams({ limit, offset });
+    if (category) params.append('category', category);
+    if (difficulty) params.append('difficulty', difficulty);
+    if (search) params.append('search', search);
+    const res = await apiRequest(`/api/exams?${params.toString()}`);
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải danh sách đề thi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải danh sách đề thi' };
+  }
+}
+
+export async function createExam(payload) {
+  try {
+    const res = await apiJsonRequest('/api/exams', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tạo đề thi') };
+    const data = await res.json();
+    return { data: data?.exam || null, error: data?.exam ? null : 'Không thể tạo đề thi' };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tạo đề thi' };
+  }
+}
+
+export async function getMyExams({ limit = 20, offset = 0 } = {}) {
+  try {
+    const res = await apiRequest(`/api/exams/my?limit=${limit}&offset=${offset}`, { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải đề của tôi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải đề của tôi' };
+  }
+}
+
+export async function getSavedExams({ limit = 20, offset = 0 } = {}) {
+  try {
+    const res = await apiRequest(`/api/exams/saved?limit=${limit}&offset=${offset}`, { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải đề đã lưu') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải đề đã lưu' };
+  }
+}
+
+export async function toggleExamBookmark(examId) {
+  try {
+    const res = await apiJsonRequest(`/api/exams/${examId}/bookmark`, {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể lưu đề thi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể lưu đề thi' };
+  }
+}
+
+export async function removeExamBookmark(examId) {
+  try {
+    const res = await apiJsonRequest(`/api/exams/${examId}/bookmark`, {
+      method: 'DELETE',
+      requireAuth: true,
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể bỏ lưu đề thi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể bỏ lưu đề thi' };
+  }
+}
+
+// ==================== SUBSCRIPTION ====================
+
+export async function getMySubscription() {
+  try {
+    const res = await apiRequest('/api/users/me/subscription', { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải thông tin đăng ký') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải thông tin đăng ký' };
+  }
+}
+
+export async function createSubscription({ plan, paymentMethod }) {
+  try {
+    const res = await apiJsonRequest('/api/subscriptions', {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify({ plan, paymentMethod }),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể kích hoạt gói') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể kích hoạt gói' };
+  }
+}
+
+// ==================== EXAM QUESTIONS ====================
+
+export async function getExamQuestions(examId) {
+  try {
+    const res = await apiRequest(`/api/exams/${examId}/questions`);
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải câu hỏi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải câu hỏi' };
+  }
+}
+
+export async function addExamQuestion(examId, payload) {
+  try {
+    const res = await apiJsonRequest(`/api/exams/${examId}/questions`, {
+      method: 'POST',
+      requireAuth: true,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể thêm câu hỏi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể thêm câu hỏi' };
+  }
+}
+
+export async function deleteExamQuestion(examId, questionId) {
+  try {
+    const res = await apiJsonRequest(`/api/exams/${examId}/questions/${questionId}`, {
+      method: 'DELETE',
+      requireAuth: true,
+    });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể xóa câu hỏi') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể xóa câu hỏi' };
+  }
+}
+
+// ==================== ADMIN STATS ====================
+
+export async function getAdminStats() {
+  try {
+    const res = await apiRequest('/api/admin/stats', { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải thống kê') };
+    return { data: await res.json(), error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải thống kê' };
+  }
+}
+
+// ==================== ADMIN ACTIVITY LOG ====================
+
+export async function getAdminActivityLog({ limit = 30 } = {}) {
+  try {
+    const res = await apiRequest(`/api/admin/activity-log?limit=${limit}`, { requireAuth: true });
+    if (!res.ok) return { data: null, error: await getErrorMessage(res, 'Không thể tải nhật ký hoạt động') };
+    const payload = await res.json();
+    return { data: payload?.logs || [], error: null };
+  } catch (_e) {
+    return { data: null, error: 'Không thể tải nhật ký hoạt động' };
   }
 }

@@ -63,6 +63,10 @@ model User {
   unitAttempts     UnitAttempt[]
   exerciseAttempts ExerciseAttempt[]
   xpLedger         XpLedger[]
+  notifications    Notification[]
+  createdExams     Exam[]           @relation("ExamCreator")
+  examBookmarks    ExamBookmark[]
+  subscription     UserSubscription?
 
   @@index([totalXp], map: "idx_users_total_xp")
   @@map("users")
@@ -276,4 +280,91 @@ model XpLedger {
   @@index([unitId], map: "idx_xp_ledger_unit_id")
   @@index([unitAttemptId], map: "idx_xp_ledger_unit_attempt_id")
   @@map("xp_ledger")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  userId    Int      @map("user_id") @db.UnsignedInt
+  type      String   @db.VarChar(50)
+  icon      String   @db.VarChar(10)
+  title     String   @db.VarChar(255)
+  body      String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, isRead], map: "idx_notifications_user_read")
+  @@index([userId, createdAt], map: "idx_notifications_user_created")
+  @@map("notifications")
+}
+
+model Exam {
+  id            Int      @id @default(autoincrement()) @db.UnsignedInt
+  creatorId     Int      @map("creator_id") @db.UnsignedInt
+  title         String   @db.VarChar(255)
+  description   String?  @db.Text
+  category      String?  @db.VarChar(100)
+  difficulty    String   @default("MEDIUM") @db.VarChar(20)
+  isPublic      Boolean  @default(true) @map("is_public")
+  isPremium     Boolean  @default(false) @map("is_premium")
+  questionCount Int      @default(0) @map("question_count") @db.UnsignedSmallInt
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  creator   User            @relation("ExamCreator", fields: [creatorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  bookmarks ExamBookmark[]
+  questions ExamQuestion[]
+
+  @@index([creatorId], map: "idx_exams_creator_id")
+  @@index([isPublic, createdAt], map: "idx_exams_public_created")
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id            Int      @id @default(autoincrement()) @db.UnsignedInt
+  examId        Int      @map("exam_id") @db.UnsignedInt
+  questionText  String   @map("question_text") @db.Text
+  type          String   @default("MULTIPLE_CHOICE") @db.VarChar(30)
+  options       Json?
+  correctAnswer String?  @map("correct_answer") @db.Text
+  explanation   String?  @db.Text
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([examId, sortOrder], map: "idx_exam_questions_exam_sort")
+  @@map("exam_questions")
+}
+
+model ExamBookmark {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  userId    Int      @map("user_id") @db.UnsignedInt
+  examId    Int      @map("exam_id") @db.UnsignedInt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, examId], map: "uk_exam_bookmarks_user_exam")
+  @@index([examId], map: "idx_exam_bookmarks_exam_id")
+  @@map("exam_bookmarks")
+}
+
+model UserSubscription {
+  id            Int      @id @default(autoincrement()) @db.UnsignedInt
+  userId        Int      @unique @map("user_id") @db.UnsignedInt
+  plan          String   @db.VarChar(50)
+  status        String   @default("ACTIVE") @db.VarChar(20)
+  paymentMethod String?  @map("payment_method") @db.VarChar(50)
+  startedAt     DateTime @default(now()) @map("started_at")
+  expiresAt     DateTime @map("expires_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("user_subscriptions")
 }

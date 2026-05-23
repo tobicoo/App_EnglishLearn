@@ -94,7 +94,9 @@ export default function LeaderboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>🏆 Bảng xếp hạng</Text>
-        <Text style={[styles.headerSub, { color: theme.textSecondary }]}>Xếp hạng tuần này</Text>
+        <Text style={[styles.headerSub, { color: theme.textSecondary }]}>
+          {players.length > 0 ? `Top ${players.length} người học` : 'Xếp hạng tổng XP'}
+        </Text>
       </View>
 
       {errorMessage ? (

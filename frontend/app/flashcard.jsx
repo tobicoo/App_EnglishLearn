@@ -1,4 +1,3 @@
-import { FLASHCARDS as FALLBACK_FLASHCARDS } from '@/constants/flashcardData';
 import { getAllFlashcards } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,7 +13,6 @@ export default function FlashcardScreen() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [usingFallback, setUsingFallback] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
@@ -34,19 +32,12 @@ export default function FlashcardScreen() {
   const loadFlashcards = async () => {
     setLoading(true);
     setLoadError('');
-    setUsingFallback(false);
     const { data, error } = await getAllFlashcards();
-    if (error && FALLBACK_FLASHCARDS.length > 0) {
-      setCards(FALLBACK_FLASHCARDS);
-      setUsingFallback(true);
-      setLoadError(error);
-    } else if (error) {
+    if (error) {
       setCards([]);
       setLoadError(error);
-    } else if (!data || data.length === 0) {
-      setCards([]);
     } else {
-      setCards(data);
+      setCards(data || []);
     }
     setLoading(false);
   };
@@ -112,12 +103,6 @@ export default function FlashcardScreen() {
         <Text style={styles.headerCounter}>{currentIndex + 1}/{totalCards}</Text>
       </View>
 
-      {usingFallback && (
-        <View style={styles.noticeBox}>
-          <Text style={styles.noticeText}>Đang dùng bộ flashcard mẫu vì dữ liệu trực tuyến chưa sẵn sàng.</Text>
-        </View>
-      )}
-
       {/* Main Flashcard */}
       <View style={styles.cardArea}>
         <TouchableOpacity activeOpacity={1} onPress={handleFlip} style={styles.cardWrapper}>
@@ -167,9 +152,6 @@ const styles = StyleSheet.create({
   progressBar: { flex: 1, height: 12, backgroundColor: '#e5e5e5', borderRadius: 10, marginLeft: 15, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#58cc02' },
   headerCounter: { marginLeft: 10, color: '#777', fontWeight: 'bold' },
-  noticeBox: { marginHorizontal: 20, padding: 12, borderRadius: 14, backgroundColor: '#fff4e6', borderWidth: 1, borderColor: '#ffc800' },
-  noticeText: { color: '#7a4b00', fontWeight: '600', textAlign: 'center', lineHeight: 19 },
-  
   cardArea: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   cardWrapper: { width: '100%', height: 450 },
   card: {

@@ -1,32 +1,35 @@
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { BackHandler, StyleSheet, Text, View } from "react-native";
+import { BackHandler, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const getHeartLabel = (user, nowMs) => {
+const getHeartLabel = (user, nowMs, t) => {
     const hearts = user?.hearts ?? 0;
     const maxHearts = user?.maxHearts ?? 5;
 
     if (hearts >= maxHearts) {
-        return "Đầy tim";
+        return t('hearts_full');
     }
 
     const nextHeartTime = user?.nextHeartAt
         ? new Date(user.nextHeartAt).getTime()
         : null;
     if (!nextHeartTime) {
-        return "Đang hồi tim";
+        return t('hearts_refilling');
     }
 
     const minutes = Math.max(Math.ceil((nextHeartTime - nowMs) / 60000), 0);
-    return minutes <= 0 ? "Sắp hồi tim" : `Tim tiếp theo: ${minutes} phút`;
+    return minutes <= 0 ? t('hearts_almost') : t('hearts_next', { n: minutes });
 };
 
 export default function TabLayout() {
     const { user } = useAuth();
     const { theme } = useTheme();
+    const { t } = useLanguage();
+    const router = useRouter();
     const [showHeartInfo, setShowHeartInfo] = useState(false);
     const [nowMs, setNowMs] = useState(Date.now());
 
@@ -68,16 +71,14 @@ export default function TabLayout() {
                     <Text style={[styles.stat, { color: theme.text }]}>
                         💎 {user?.gems || 0}
                     </Text>
-                    <Text
-                        onPress={() => setShowHeartInfo((value) => !value)}
-                        style={[
-                            styles.stat,
-                            styles.heartStat,
-                            { color: theme.text },
-                        ]}
-                    >
-                        ❤️ {hearts}/{maxHearts}
-                    </Text>
+                    <TouchableOpacity onPress={() => setShowHeartInfo((value) => !value)}>
+                        <Text style={[styles.stat, styles.heartStat, { color: theme.text }]}>
+                            ❤️ {hearts}/{maxHearts}
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.bellBtn}>
+                        <Text style={styles.bellIcon}>🔔</Text>
+                    </TouchableOpacity>
                 </View>
             </SafeAreaView>
 
@@ -86,7 +87,7 @@ export default function TabLayout() {
                     <View style={styles.heartBubble}>
                         <View style={styles.heartBubbleArrow} />
                         <Text style={styles.heartBubbleText}>
-                            {getHeartLabel(user, nowMs)}
+                            {getHeartLabel(user, nowMs, t)}
                         </Text>
                     </View>
                 </View>
@@ -109,7 +110,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="home"
                     options={{
-                        title: "Học tập",
+                        title: t('tab_study'),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>📚</Text>
                         ),
@@ -118,7 +119,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="english-pro"
                     options={{
-                        title: "English Pro",
+                        title: t('tab_english_pro'),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>⭐</Text>
                         ),
@@ -127,7 +128,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="leaderboard"
                     options={{
-                        title: "Xếp hạng",
+                        title: t('tab_leaderboard'),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>🏆</Text>
                         ),
@@ -136,7 +137,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="profile"
                     options={{
-                        title: "Hồ sơ",
+                        title: t('tab_profile'),
                         tabBarIcon: () => (
                             <Text style={{ fontSize: 20 }}>👤</Text>
                         ),
@@ -145,9 +146,9 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="settings"
                     options={{
-                        title: "Cài đặt",
+                        title: t('tab_menu'),
                         tabBarIcon: () => (
-                            <Text style={{ fontSize: 20 }}>⚙️</Text>
+                            <Text style={{ fontSize: 20 }}>☰</Text>
                         ),
                     }}
                 />
@@ -198,4 +199,6 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
     tabBar: { height: 60, borderTopWidth: 2 },
+    bellBtn: { paddingHorizontal: 6 },
+    bellIcon: { fontSize: 20 },
 });

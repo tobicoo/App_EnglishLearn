@@ -13,6 +13,7 @@ const BCRYPT_SALT_ROUNDS = 12;
 const SECTION_FIELDS = new Set(["title", "subtitle", "subTitle", "sortOrder", "isPublished"]);
 const UNIT_FIELDS = new Set(["sectionId", "title", "description", "kind", "sortOrder", "xpReward", "isPublished"]);
 const EXERCISE_FIELDS = new Set(["unitId", "type", "prompt", "answerText", "correctOptionId", "explanation", "sortOrder", "xpReward", "options", "matchingPairs"]);
+const FLASHCARD_FIELDS = new Set(["unitId", "word", "phonetic", "meaning", "imageUrl", "sortOrder"]);
 const EXERCISE_TYPES = new Set(["MULTIPLE_CHOICE", "FILL_BLANK", "MATCHING"]);
 const OPTION_BASED_EXERCISE_TYPES = new Set(["MULTIPLE_CHOICE"]);
 const DEFAULT_MATCHING_PROMPT = "Nối các cặp phù hợp";
@@ -286,6 +287,55 @@ async function createExercise(input) {
   });
 }
 
+function buildFlashcardUpdate(input) {
+  ensureKnownFields(input, FLASHCARD_FIELDS);
+  const data = {};
+
+  if (Object.prototype.hasOwnProperty.call(input, "unitId")) data.unitId = parsePositiveInt(input.unitId, "Unit id");
+  if (Object.prototype.hasOwnProperty.call(input, "word")) data.word = parseOptionalString(input.word, "Word", { maxLength: 120 });
+  if (Object.prototype.hasOwnProperty.call(input, "phonetic")) data.phonetic = parseOptionalString(input.phonetic, "Phonetic", { maxLength: 120, nullable: true });
+  if (Object.prototype.hasOwnProperty.call(input, "meaning")) data.meaning = parseOptionalString(input.meaning, "Meaning", { maxLength: 255 });
+  if (Object.prototype.hasOwnProperty.call(input, "imageUrl")) data.imageUrl = parseOptionalString(input.imageUrl, "Image URL", { maxLength: 500, nullable: true });
+  if (Object.prototype.hasOwnProperty.call(input, "sortOrder")) data.sortOrder = parsePositiveInt(input.sortOrder, "Sort order");
+
+  return requireUpdateData(data);
+}
+
+async function createFlashcard(input) {
+  const unitId = parsePositiveInt(input?.unitId, "Unit id");
+  const word = parseRequiredString(input?.word, "Word", { maxLength: 120 });
+  const phonetic = parseOptionalString(input?.phonetic, "Phonetic", { maxLength: 120, nullable: true });
+  const meaning = parseRequiredString(input?.meaning, "Meaning", { maxLength: 255 });
+  const imageUrl = parseOptionalString(input?.imageUrl, "Image URL", { maxLength: 500, nullable: true });
+  const sortOrder = Number.isInteger(Number(input?.sortOrder)) && Number(input?.sortOrder) >= 1
+    ? Number(input.sortOrder)
+    : null;
+
+  const data = { unitId, word, phonetic, meaning, imageUrl };
+  if (sortOrder) data.sortOrder = sortOrder;
+
+  return prisma.flashcard.create({ data });
+}
+
+async function updateFlashcard(id, input) {
+  const flashcardId = normalizeIdParam(id, "Flashcard");
+  try {
+    return await prisma.flashcard.update({ where: { id: flashcardId }, data: buildFlashcardUpdate(input || {}) });
+  } catch (error) {
+    if (error.code === "P2025") throw new ApiError(404, "FLASHCARD_NOT_FOUND", "Flashcard not found");
+    throw error;
+  }
+}
+
+async function deleteFlashcard(id) {
+  const flashcardId = normalizeIdParam(id, "Flashcard");
+  return prisma.$transaction(async (tx) => {
+    const flashcard = await tx.flashcard.findUnique({ where: { id: flashcardId } });
+    if (!flashcard) throw new ApiError(404, "FLASHCARD_NOT_FOUND", "Flashcard not found");
+    await tx.flashcard.delete({ where: { id: flashcardId } });
+  });
+}
+
 async function deleteSection(id) {
   const sectionId = normalizeIdParam(id, "Section");
   return prisma.$transaction(async (tx) => {
@@ -544,19 +594,169 @@ async function resetUserProgress(id) {
   });
 }
 
+const PLAN_MONTHLY_PRICE = 12.12;
+const PLAN_YEARLY_PRICE = 99.99;
+
+function planPrice(plan) {
+  if (plan === "yearly") return PLAN_YEARLY_PRICE;
+  if (plan === "monthly") return PLAN_MONTHLY_PRICE;
+  return 0;
+}
+
+async function getStats() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed
+
+  const yearStart = new Date(currentYear, 0, 1);
+  const monthStart = new Date(currentYear, currentMonth, 1);
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+  const [
+    totalUsers,
+    newUsersThisMonth,
+    avgScoreResult,
+    completedAttempts,
+    allSubscriptions,
+    newSubscriptionsThisMonth,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { createdAt: { gte: monthStart, lte: monthEnd } } }),
+    prisma.unitAttempt.aggregate({
+      where: { status: "COMPLETED" },
+      _avg: { score: true },
+      _count: true,
+    }),
+    prisma.unitAttempt.findMany({
+      where: { status: "COMPLETED", completedAt: { gte: yearStart } },
+      select: { completedAt: true },
+    }),
+    prisma.userSubscription.findMany({
+      where: { status: "ACTIVE" },
+      select: { plan: true, startedAt: true, expiresAt: true },
+    }),
+    prisma.userSubscription.findMany({
+      where: { createdAt: { gte: monthStart, lte: monthEnd } },
+      select: { plan: true },
+    }),
+  ]);
+
+  const monthlyAttempts = Array(12).fill(0);
+  for (const a of completedAttempts) {
+    if (a.completedAt) {
+      const m = new Date(a.completedAt).getMonth();
+      monthlyAttempts[m] += 1;
+    }
+  }
+
+  const totalRevenueAllTime = allSubscriptions.reduce((sum, s) => sum + planPrice(s.plan), 0);
+  const revenueThisMonth = newSubscriptionsThisMonth.reduce((sum, s) => sum + planPrice(s.plan), 0);
+
+  const planCounts = { monthly: 0, yearly: 0, trial: 0 };
+  for (const s of allSubscriptions) planCounts[s.plan] = (planCounts[s.plan] || 0) + 1;
+  const totalActive = allSubscriptions.length;
+  const revenueByType = totalActive === 0 ? [] : [
+    { label: "Monthly", pct: Math.round((planCounts.monthly / totalActive) * 100), color: "#1cb0f6" },
+    { label: "Yearly", pct: Math.round((planCounts.yearly / totalActive) * 100), color: "#CE82FF" },
+    { label: "Trial", pct: Math.round((planCounts.trial / totalActive) * 100), color: "#ffc800" },
+  ];
+
+  return {
+    totalUsers,
+    newUsersThisMonth,
+    totalCompletedAttempts: avgScoreResult._count,
+    avgScore: avgScoreResult._avg.score ? Math.round(avgScoreResult._avg.score * 10) / 10 : 0,
+    monthlyAttempts,
+    activeSubscriptions: totalActive,
+    revenueThisMonth: revenueThisMonth.toFixed(2),
+    totalRevenue: totalRevenueAllTime.toFixed(2),
+    revenueByType,
+  };
+}
+
+async function getActivityLog({ limit = 30 } = {}) {
+  const take = Math.min(Number(limit) || 30, 100);
+
+  const [recentAttempts, recentUsers, recentExams] = await Promise.all([
+    prisma.unitAttempt.findMany({
+      where: { status: "COMPLETED" },
+      orderBy: [{ completedAt: "desc" }, { id: "desc" }],
+      take,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        unit: { select: { title: true } },
+      },
+    }),
+    prisma.user.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 10,
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    }),
+    prisma.exam.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 10,
+      include: { creator: { select: { name: true } } },
+    }),
+  ]);
+
+  const logs = [];
+
+  for (const attempt of recentAttempts) {
+    logs.push({
+      id: `attempt-${attempt.id}`,
+      icon: "📚",
+      action: "Bài học hoàn thành",
+      detail: `${attempt.user.name} · ${attempt.unit?.title || `Unit #${attempt.unitId}`} · ${attempt.score}%`,
+      time: attempt.completedAt,
+      type: "learning",
+    });
+  }
+
+  for (const user of recentUsers) {
+    logs.push({
+      id: `user-${user.id}`,
+      icon: user.role === "ADMIN" ? "🔐" : "👤",
+      action: user.role === "ADMIN" ? "Tài khoản Admin được tạo" : "Tài khoản mới được tạo",
+      detail: user.email,
+      time: user.createdAt,
+      type: "user",
+    });
+  }
+
+  for (const exam of recentExams) {
+    logs.push({
+      id: `exam-${exam.id}`,
+      icon: "📝",
+      action: "Đề thi được tạo",
+      detail: `${exam.title} · ${exam.creator?.name || "Unknown"}`,
+      time: exam.createdAt,
+      type: "exam",
+    });
+  }
+
+  logs.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  return logs.slice(0, take);
+}
+
 module.exports = {
   createExercise,
+  createFlashcard,
   createSection,
   createUnit,
   deleteExercise,
+  deleteFlashcard,
   deleteSection,
   deleteUnit,
+  getActivityLog,
   getContent,
   getHeartbeatSetting,
+  getStats,
   getUsers,
   resetUserPassword,
   resetUserProgress,
   updateExercise,
+  updateFlashcard,
   updateHeartbeatSetting,
   updateSection,
   updateUnit,

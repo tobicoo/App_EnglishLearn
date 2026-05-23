@@ -1,388 +1,480 @@
-import AdminContent from '@/components/admin/AdminContent';
-import AdminSettings from '@/components/admin/AdminSettings';
-import AdminUsers from '@/components/admin/AdminUsers';
 import { useAuth } from '@/context/AuthContext';
-import {
-  createAdminExercise,
-  createAdminSection,
-  createAdminUnit,
-  deleteAdminExercise,
-  deleteAdminSection,
-  deleteAdminUnit,
-  getAdminContent,
-  getAdminHeartbeatSetting,
-  getAdminUsers,
-  resetAdminUserPassword,
-  resetAdminUserProgress,
-  updateAdminExercise,
-  updateAdminHeartbeatSetting,
-  updateAdminSection,
-  updateAdminUnit,
-} from '@/services/api';
-import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/context/ThemeContext';
+import { getAdminContent, getAdminStats, getAdminUsers } from '@/services/api';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator, Alert, FlatList, ScrollView,
+  StyleSheet, Text, TextInput, TouchableOpacity, View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const tabs = [
-  { key: 'settings', label: 'Cài đặt', icon: 'settings-outline' },
-  { key: 'content', label: 'Nội dung', icon: 'albums-outline' },
-  { key: 'users', label: 'User', icon: 'people-outline' },
-];
+// ─── Mini bar chart ────────────────────────────────────────────────
+const MONTHS = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
 
-const showValue = (value) => (value === null || value === undefined ? '' : String(value));
-const DEFAULT_MATCHING_PROMPT = 'Nối các cặp phù hợp';
+function BarChart({ data = Array(12).fill(0), color = '#1cb0f6' }) {
+  const max = Math.max(...data, 1);
+  return (
+    <View style={chart.wrap}>
+      {data.map((val, i) => (
+        <View key={i} style={chart.col}>
+          <View style={[chart.bar, { height: (val / max) * 80, backgroundColor: color }]} />
+          <Text style={chart.label}>{MONTHS[i]}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+const chart = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 100 },
+  col: { flex: 1, alignItems: 'center' },
+  bar: { width: '100%', borderRadius: 4 },
+  label: { fontSize: 8, color: '#afafaf', marginTop: 3 },
+});
 
-function AdminGuard({ children }) {
-  const { user, isLoading, logout } = useAuth();
-  const router = useRouter();
+// ─── Pie-style percentage bars ─────────────────────────────────────
+function PercentBars({ data = [] }) {
+  return (
+    <View>
+      {data.map((item) => (
+        <View key={item.label} style={pie.row}>
+          <View style={[pie.dot, { backgroundColor: item.color }]} />
+          <Text style={pie.label}>{item.label}</Text>
+          <View style={pie.barBg}>
+            <View style={[pie.barFill, { width: `${item.pct}%`, backgroundColor: item.color }]} />
+          </View>
+          <Text style={pie.pct}>{item.pct}%</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+const pie = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  label: { width: 70, fontSize: 13, color: '#3c3c3c' },
+  barBg: { flex: 1, height: 10, backgroundColor: '#e5e5e5', borderRadius: 5, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 5 },
+  pct: { width: 35, fontSize: 12, color: '#afafaf', textAlign: 'right' },
+});
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.centerScreen}>
-        <ActivityIndicator color="#6750A4" />
-      </SafeAreaView>
-    );
-  }
+// ─── Stat Card ──────────────────────────────────────────────────────
+function StatCard({ icon, value, label, bg }) {
+  return (
+    <View style={[sc.card, { backgroundColor: bg }]}>
+      <Text style={sc.icon}>{icon}</Text>
+      <Text style={sc.value}>{value}</Text>
+      <Text style={sc.label}>{label}</Text>
+    </View>
+  );
+}
+const sc = StyleSheet.create({
+  card: { width: '47%', borderRadius: 20, padding: 16, alignItems: 'flex-start', marginBottom: 12 },
+  icon: { fontSize: 24, marginBottom: 8 },
+  value: { fontSize: 28, fontWeight: 'bold', color: '#3c3c3c' },
+  label: { fontSize: 12, color: '#666', marginTop: 4 },
+});
 
-  if (!user?.isAdmin && user?.role !== 'ADMIN') {
-    return (
-      <SafeAreaView style={styles.centerScreen}>
-        <Ionicons name="lock-closed-outline" size={40} color="#6750A4" />
-        <Text style={styles.blockedTitle}>Chỉ admin mới được truy cập</Text>
-        <Text style={styles.blockedText}>Đăng nhập bằng tài khoản admin@test.com để mở trang quản trị.</Text>
-        <Pressable style={styles.primaryButton} onPress={() => router.replace('/login')}>
-          <Text style={styles.primaryButtonText}>Đăng nhập admin</Text>
-        </Pressable>
-        {user ? (
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={async () => {
-              await logout();
-              router.replace('/');
-            }}
-          >
-            <Text style={styles.secondaryButtonText}>Đăng xuất tài khoản hiện tại</Text>
-          </Pressable>
-        ) : null}
-      </SafeAreaView>
-    );
-  }
-
-  return children;
+// ─── Tab screens ───────────────────────────────────────────────────
+function HomeTab({ stats, adminStats, loading, theme }) {
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#1cb0f6" /></View>;
+  const avgScore = adminStats?.avgScore ?? 0;
+  const monthlyAttempts = adminStats?.monthlyAttempts ?? Array(12).fill(0);
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        <StatCard icon="👥" value={adminStats?.totalUsers ?? stats.totalUsers} label="Tổng số tài khoản" bg="#e8f4fd" />
+        <StatCard icon="🆕" value={adminStats?.newUsersThisMonth ?? stats.newUsers} label="Tài khoản mới tháng này" bg="#e6ffe6" />
+        <StatCard icon="📚" value={stats.totalUnits} label="Tổng số bài tập" bg="#fff4e0" />
+        <StatCard icon="📅" value={stats.publishedSections} label="Section đã xuất bản" bg="#f5eeff" />
+      </View>
+      <View style={[tab.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={tab.scoreRow}>
+          <Text style={tab.scoreIcon}>📊</Text>
+          <View>
+            <Text style={[tab.scoreValue, { color: '#1cb0f6' }]}>{avgScore.toFixed(1)}</Text>
+            <Text style={[tab.scoreLabel, { color: theme.textSecondary }]}>Điểm số trung bình</Text>
+          </View>
+        </View>
+      </View>
+      <View style={[tab.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[tab.cardTitle, { color: theme.text }]}>📈 Tần Suất Làm Bài Trong Năm</Text>
+        <BarChart data={monthlyAttempts} color="#1cb0f6" />
+      </View>
+    </ScrollView>
+  );
 }
 
-export default function AdminScreen() {
+function AccountsTab({ users, loading, theme }) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  const filtered = users.filter((u) => {
+    const matchSearch = u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase());
+    if (filter === 'admin') return matchSearch && u.role === 'ADMIN';
+    if (filter === 'user') return matchSearch && u.role !== 'ADMIN';
+    return matchSearch;
+  });
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#1cb0f6" /></View>;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={[tab.searchRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={[tab.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={{ fontSize: 16 }}>🔍</Text>
+          <TextInput
+            style={[{ flex: 1, fontSize: 14 }, { color: theme.text }]}
+            placeholder="Tìm người dùng..."
+            placeholderTextColor={theme.textSecondary}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+        <View style={tab.filterRow}>
+          {[['all', 'Tất cả'], ['user', 'User'], ['admin', 'Admin']].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              style={[tab.filterBtn, filter === key && tab.filterBtnActive]}
+              onPress={() => setFilter(key)}
+            >
+              <Text style={[tab.filterBtnText, filter === key && { color: '#fff' }]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={{ padding: 16, gap: 10 }}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', padding: 40 }}>
+            <Text style={{ fontSize: 40 }}>👤</Text>
+            <Text style={[{ fontSize: 15, fontWeight: 'bold', marginTop: 12 }, { color: theme.text }]}>Không có người dùng</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={[tab.userCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={tab.userAvatar}>
+              <Text style={{ fontSize: 22 }}>{item.avatar || '🐣'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[tab.userName, { color: theme.text }]}>{item.name}</Text>
+                {item.role === 'ADMIN' && <View style={tab.adminBadge}><Text style={tab.adminBadgeText}>Admin</Text></View>}
+              </View>
+              <Text style={[tab.userEmail, { color: theme.textSecondary }]}>{item.email}</Text>
+              <Text style={[tab.userStats, { color: theme.textSecondary }]}>⚡ {item.totalXp ?? 0} XP · 🔥 {item.streak ?? 0}</Text>
+            </View>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+function LessonsTab({ sections, loading, theme }) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  const allUnits = sections.flatMap((s) =>
+    (s.units || []).map((u) => ({ ...u, sectionTitle: s.title, isPublished: u.isPublished ?? true }))
+  );
+  const filtered = allUnits.filter((u) => {
+    const matchSearch = u.title?.toLowerCase().includes(search.toLowerCase()) ||
+      u.sectionTitle?.toLowerCase().includes(search.toLowerCase());
+    if (filter === 'visible') return matchSearch && u.isPublished;
+    if (filter === 'hidden') return matchSearch && !u.isPublished;
+    return matchSearch;
+  });
+
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#1cb0f6" /></View>;
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={[tab.searchRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={[tab.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={{ fontSize: 16 }}>🔍</Text>
+          <TextInput
+            style={[{ flex: 1, fontSize: 14 }, { color: theme.text }]}
+            placeholder="Tìm bài học..."
+            placeholderTextColor={theme.textSecondary}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+        <View style={tab.filterRow}>
+          {[['all', 'Tất cả'], ['visible', 'Hiện'], ['hidden', 'Ẩn']].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              style={[tab.filterBtn, filter === key && tab.filterBtnActive]}
+              onPress={() => setFilter(key)}
+            >
+              <Text style={[tab.filterBtnText, filter === key && { color: '#fff' }]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={{ padding: 16, gap: 10 }}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', padding: 40 }}>
+            <Text style={{ fontSize: 40 }}>📚</Text>
+            <Text style={[{ fontSize: 15, fontWeight: 'bold', marginTop: 12 }, { color: theme.text }]}>Không có bài học</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={[tab.lessonCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[tab.lessonTitle, { color: item.isPublished ? theme.text : theme.textSecondary }]}>{item.title || '(Untitled)'}</Text>
+              <Text style={[tab.lessonSection, { color: theme.textSecondary }]}>{item.sectionTitle}</Text>
+              <Text style={[tab.lessonMeta, { color: theme.textSecondary }]}>{item.exercises?.length ?? 0} câu hỏi</Text>
+            </View>
+            <View style={[tab.publishBadge, { backgroundColor: item.isPublished ? '#e6ffe6' : '#f5f5f5' }]}>
+              <Text style={[tab.publishText, { color: item.isPublished ? '#2f7a12' : '#afafaf' }]}>
+                {item.isPublished ? 'Hiện' : 'Ẩn'}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+function RevenueTab({ theme, adminStats }) {
+  const revenueThisMonth = adminStats?.revenueThisMonth ?? 0;
+  const totalRevenue = adminStats?.totalRevenue ?? 0;
+  const revenueByType = adminStats?.revenueByType ?? [];
+  const monthlyAttempts = adminStats?.monthlyAttempts ?? Array(12).fill(0);
+  const activeSubscriptions = adminStats?.activeSubscriptions ?? 0;
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 14 }}>
+        <View style={[sc.card, { backgroundColor: '#e8f4fd', width: '47%' }]}>
+          <Text style={sc.icon}>💳</Text>
+          <Text style={sc.value}>{activeSubscriptions}</Text>
+          <Text style={sc.label}>Gói đang hoạt động</Text>
+        </View>
+        <View style={[sc.card, { backgroundColor: '#e6ffe6', width: '47%' }]}>
+          <Text style={sc.icon}>📅</Text>
+          <Text style={sc.value}>${revenueThisMonth.toFixed(2)}</Text>
+          <Text style={sc.label}>Doanh thu tháng này</Text>
+        </View>
+      </View>
+      <View style={[tab.revenueCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[tab.revenueLabel, { color: theme.textSecondary }]}>Tổng doanh thu</Text>
+        <Text style={tab.revenueValue}>${totalRevenue.toFixed(2)}</Text>
+        <Text style={[tab.revenueSub, { color: theme.textSecondary }]}>Tất cả thời gian</Text>
+      </View>
+      <View style={[tab.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[tab.cardTitle, { color: theme.text }]}>📊 Phân bổ gói đăng ký</Text>
+        <PercentBars data={revenueByType} />
+      </View>
+      <View style={[tab.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[tab.cardTitle, { color: theme.text }]}>📈 Tần suất làm bài theo tháng</Text>
+        <BarChart data={monthlyAttempts} color="#CE82FF" />
+      </View>
+    </ScrollView>
+  );
+}
+
+function AccountTab({ user, theme, onLogout, router }) {
+  const menuItems = [
+    { icon: '📦', label: 'Quản lý nội dung hệ thống', onPress: () => router.push('/admin/content-manager') },
+    { icon: '⚙️', label: 'Cài đặt hệ thống', onPress: () => router.push('/admin/system-settings') },
+    { icon: '📋', label: 'Xem nhật ký hoạt động', onPress: () => router.push('/admin/activity-log') },
+  ];
+  return (
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+      <View style={[tab.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={tab.profileAvatar}>
+          <Text style={{ fontSize: 36 }}>{user?.avatar || '🛡️'}</Text>
+        </View>
+        <Text style={[tab.profileName, { color: theme.text }]}>{user?.name}</Text>
+        <Text style={[tab.profileEmail, { color: theme.textSecondary }]}>{user?.email}</Text>
+        <View style={tab.profileRoleBadge}><Text style={tab.profileRoleText}>Quản trị viên</Text></View>
+      </View>
+
+      <View style={[tab.menuSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {menuItems.map((item, idx) => (
+          <TouchableOpacity
+            key={item.label}
+            style={[tab.menuItem, { borderBottomColor: theme.border, borderBottomWidth: idx < menuItems.length - 1 ? 1 : 0 }]}
+            onPress={item.onPress}
+            activeOpacity={0.7}
+          >
+            <Text style={tab.menuItemIcon}>{item.icon}</Text>
+            <Text style={[tab.menuItemLabel, { color: theme.text }]}>{item.label}</Text>
+            <Text style={[{ fontSize: 20, color: theme.textSecondary }]}>›</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity style={tab.logoutBtn} onPress={onLogout}>
+        <Text style={tab.logoutText}>Đăng xuất</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────
+const TABS = [
+  { key: 'home', icon: '🏠', label: 'Home' },
+  { key: 'accounts', icon: '👥', label: 'Accounts' },
+  { key: 'lessons', icon: '📚', label: 'Lessons' },
+  { key: 'revenue', icon: '📊', label: 'Revenue' },
+  { key: 'account', icon: '👤', label: 'Account' },
+];
+
+export default function AdminDashboard() {
   const router = useRouter();
-  const { logout, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('settings');
+  const { user, logout } = useAuth();
+  const { theme } = useTheme();
+  const [activeTab, setActiveTab] = useState('home');
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  const [heartbeatSeconds, setHeartbeatSeconds] = useState('120');
-  const [sections, setSections] = useState([]);
   const [users, setUsers] = useState([]);
-  const [passwordByUserId, setPasswordByUserId] = useState({});
-  const [savingKey, setSavingKey] = useState('');
-  const adminContentRef = useRef(null);
+  const [sections, setSections] = useState([]);
+  const [adminStats, setAdminStats] = useState(null);
 
-  const setStatus = (type, text) => setMessage({ type, text });
-
-  useEffect(() => {
-    const onBackPress = () => {
-      if (activeTab === 'content') {
-        const handled = adminContentRef.current?.goBackOneLevel?.();
-        if (handled) return true;
-      }
-      return true;
-    };
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
-  }, [activeTab]);
-
-  const loadAdminData = useCallback(async ({ showLoading = true, updateStatus = true } = {}) => {
-    if (showLoading) setLoading(true);
-    const [heartbeatResult, contentResult, usersResult] = await Promise.all([
-      getAdminHeartbeatSetting(),
-      getAdminContent(),
-      getAdminUsers(),
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [usersResult, contentResult, statsResult] = await Promise.all([
+      getAdminUsers(), getAdminContent(), getAdminStats(),
     ]);
-    if (showLoading) setLoading(false);
-
-    const firstError = heartbeatResult.error || contentResult.error || usersResult.error;
-    if (firstError) {
-      setStatus('error', firstError);
-      return;
-    }
-
-    setHeartbeatSeconds(showValue(heartbeatResult.data?.heartRefillIntervalSeconds ?? 120));
-    setSections(contentResult.data || []);
     setUsers(usersResult.data || []);
-    if (updateStatus) setStatus('success', 'Đã tải dữ liệu admin.');
+    setSections(contentResult.data || []);
+    setAdminStats(statsResult.data || null);
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadAdminData();
-  }, [loadAdminData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const runSave = async (key, action, successText) => {
-    setSavingKey(key);
-    setStatus('', '');
-    const { data, error } = await action();
-    setSavingKey('');
-    if (error) {
-      setStatus('error', error);
-      return null;
-    }
-    setStatus('success', successText);
-    return data;
-  };
-
-  const saveHeartbeat = async () => {
-    const seconds = Number(heartbeatSeconds);
-    if (!Number.isInteger(seconds) || seconds < 1) {
-      setStatus('error', 'Interval phải là số giây nguyên lớn hơn 0.');
-      return;
-    }
-    const data = await runSave('heartbeat', () => updateAdminHeartbeatSetting(seconds), 'Đã cập nhật interval hồi tim.');
-    if (data?.heartRefillIntervalSeconds) {
-      setHeartbeatSeconds(String(data.heartRefillIntervalSeconds));
-      await refreshUser();
-    }
-  };
-
-  const handleSaveSection = async (id, form) => {
-    const data = await runSave('section', () => updateAdminSection(id, {
-      title: form.title,
-      subtitle: form.subtitle,
-      sortOrder: Number(form.sortOrder),
-      isPublished: form.isPublished,
-    }), 'Đã lưu section.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
-  };
-
-  const handleCreateSection = async (payload) => {
-    const data = await runSave('create-section', () => createAdminSection(payload), 'Đã tạo section.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
-    return data;
-  };
-  const handleDeleteSection = async (id) => {
-    const data = await runSave('delete-section', () => deleteAdminSection(id), 'Đã xóa section.');
-    if (data !== null) await loadAdminData({ showLoading: false, updateStatus: false });
-    return data;
-  };
-
-  const handleSaveUnit = async (id, form) => {
-    const kind = ['LESSON', 'REVIEW', 'CHECKPOINT'].includes(form.kind) ? form.kind : 'LESSON';
-    const data = await runSave('unit', () => updateAdminUnit(id, {
-      title: form.title || null,
-      description: form.description || null,
-      kind,
-      sortOrder: Number(form.sortOrder),
-      xpReward: Number(form.xpReward),
-      isPublished: form.isPublished,
-    }), 'Đã lưu unit.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
-  };
-
-  const handleCreateUnit = async (payload) => {
-    const data = await runSave('create-unit', () => createAdminUnit(payload), 'Đã tạo unit.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
-    return data;
-  };
-  const handleDeleteUnit = async (id) => {
-    const data = await runSave('delete-unit', () => deleteAdminUnit(id), 'Đã xóa unit.');
-    if (data !== null) await loadAdminData({ showLoading: false, updateStatus: false });
-    return data;
-  };
-
-  const handleSaveExercise = async (id, form, optionForms, matchingPairForms, acceptedAnswerForms = []) => {
-    const type = ['MULTIPLE_CHOICE', 'FILL_BLANK', 'MATCHING'].includes(form.type) ? form.type : 'MULTIPLE_CHOICE';
-    const prompt = type === 'MATCHING' ? DEFAULT_MATCHING_PROMPT : form.prompt.trim();
-    if (!prompt) {
-      setStatus('error', 'Nội dung câu hỏi là bắt buộc.');
-      return;
-    }
-    const extraPayload = {};
-    if (type === 'MULTIPLE_CHOICE') {
-      const options = optionForms.filter((option) => option.text.trim());
-      if (options.length < 2) { setStatus('error', 'Cần ít nhất 2 options.'); return; }
-      if (!options.some((option) => option.isCorrect)) { setStatus('error', 'Cần chọn 1 option đúng.'); return; }
-      if (options.length > 0) extraPayload.options = options;
-    }
-    if (type === 'FILL_BLANK') {
-      const answerText = acceptedAnswerForms.map((answer) => answer.text.trim()).filter(Boolean).join('|');
-      if (!answerText) { setStatus('error', 'Cần ít nhất 1 đáp án đúng.'); return; }
-      extraPayload.answerText = answerText;
-    }
-    if (type === 'MATCHING') {
-      const incompletePairIndex = matchingPairForms.findIndex((pair) => pair.leftText.trim() || pair.rightText.trim() ? !(pair.leftText.trim() && pair.rightText.trim()) : false);
-      if (incompletePairIndex >= 0) { setStatus('error', `Cặp matching ${incompletePairIndex + 1} cần đủ vế trái và vế phải.`); return; }
-      const matchingPairs = matchingPairForms.filter((pair) => pair.leftText.trim() && pair.rightText.trim());
-      if (matchingPairs.length < 1) { setStatus('error', 'Cần ít nhất 1 cặp matching.'); return; }
-      extraPayload.matchingPairs = matchingPairs;
-    }
-    const data = await runSave('exercise', () => updateAdminExercise(id, {
-      type,
-      prompt,
-      answerText: type === 'FILL_BLANK' ? extraPayload.answerText : null,
-      explanation: form.explanation || null,
-      sortOrder: Number(form.sortOrder),
-      xpReward: Number(form.xpReward),
-      ...extraPayload,
-    }), 'Đã lưu câu hỏi.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
-  };
-
-  const handleCreateExercise = async (payload) => {
-    const type = ['MULTIPLE_CHOICE', 'FILL_BLANK', 'MATCHING'].includes(payload.type) ? payload.type : 'MULTIPLE_CHOICE';
-    const data = await runSave('create-exercise', () => createAdminExercise({
-      ...payload,
-      prompt: type === 'MATCHING' ? DEFAULT_MATCHING_PROMPT : payload.prompt,
-      answerText: type === 'MATCHING' ? null : payload.answerText,
-    }), 'Đã tạo câu hỏi.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
-    return data;
-  };
-  const handleDeleteExercise = async (id) => {
-    const data = await runSave('delete-exercise', () => deleteAdminExercise(id), 'Đã xóa câu hỏi.');
-    if (data !== null) await loadAdminData({ showLoading: false, updateStatus: false });
-    return data;
-  };
-
-  const handleSavePassword = async (userId) => {
-    const password = passwordByUserId[userId] || '';
-    if (password.length < 6) {
-      setStatus('error', 'Mật khẩu mới phải có ít nhất 6 ký tự.');
-      return;
-    }
-    const data = await runSave(`password-${userId}`, () => resetAdminUserPassword(userId, password), 'Đã đổi mật khẩu người dùng.');
-    if (data) setPasswordByUserId((current) => ({ ...current, [userId]: '' }));
-  };
-
-  const handleResetProgress = async (targetUser) => {
-    const data = await runSave(`reset-${targetUser.id}`, () => resetAdminUserProgress(targetUser.id), 'Đã reset tiến trình người dùng.');
-    if (data) await loadAdminData({ showLoading: false, updateStatus: false });
+  const stats = {
+    totalUsers: users.length,
+    newUsers: Math.floor(users.length * 0.12) || 0,
+    totalUnits: sections.reduce((sum, s) => sum + (s.units?.length || 0), 0),
+    publishedSections: sections.filter((s) => s.isPublished !== false).length,
   };
 
   const handleLogout = () => {
-    Alert.alert('Đăng xuất admin', 'Thoát khỏi giao diện quản trị?', [
+    Alert.alert('Đăng xuất', 'Thoát khỏi trang quản trị?', [
       { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Đăng xuất',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/');
-        },
-      },
+      { text: 'Đăng xuất', style: 'destructive', onPress: async () => { await logout(); router.replace('/'); } },
     ]);
   };
 
   return (
-    <AdminGuard>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Pressable style={styles.backButton} onPress={() => { if (activeTab === 'content') { adminContentRef.current?.goBackOneLevel?.(); } }} accessibilityLabel="Quay lại">
-              <Ionicons name="chevron-back" size={24} color="#1D1B20" />
-            </Pressable>
-            <View>
-              <Text style={styles.eyebrow}>ADMIN</Text>
-              <Text style={styles.title}>Bảng quản trị</Text>
-            </View>
-          </View>
-          <Pressable style={styles.logoutButton} onPress={handleLogout} accessibilityLabel="Đăng xuất admin">
-            <Ionicons name="log-out-outline" size={22} color="#B3261E" />
-          </Pressable>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Top bar */}
+      <View style={[styles.topBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/settings')} style={styles.backBtn}>
+          <Text style={[styles.backText, { color: '#1cb0f6' }]}>‹ Thoát</Text>
+        </TouchableOpacity>
+        <View style={styles.topCenter}>
+          <Text style={[styles.topTitle, { color: theme.text }]}>🛡️ Admin</Text>
         </View>
+        <TouchableOpacity onPress={loadData} style={styles.backBtn}>
+          <Text style={{ color: '#1cb0f6', fontSize: 13, fontWeight: '600' }}>↻ Tải</Text>
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.tabBar}>
-          {tabs.map((tab) => (
-            <Pressable key={tab.key} style={[styles.tabItem, activeTab === tab.key && styles.activeTab]} onPress={() => setActiveTab(tab.key)}>
-              <Ionicons name={tab.icon} size={18} color={activeTab === tab.key ? '#fff' : '#625B71'} />
-              <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>{tab.label}</Text>
-            </Pressable>
-          ))}
-        </View>
+      {/* Tab content */}
+      <View style={{ flex: 1 }}>
+        {activeTab === 'home' && <HomeTab stats={stats} adminStats={adminStats} loading={loading} theme={theme} />}
+        {activeTab === 'accounts' && <AccountsTab users={users} loading={loading} theme={theme} />}
+        {activeTab === 'lessons' && <LessonsTab sections={sections} loading={loading} theme={theme} />}
+        {activeTab === 'revenue' && <RevenueTab theme={theme} adminStats={adminStats} />}
+        {activeTab === 'account' && <AccountTab user={user} theme={theme} onLogout={handleLogout} router={router} />}
+      </View>
 
-        {message.text ? (
-          <Text style={[styles.message, message.type === 'error' ? styles.errorMessage : styles.successMessage]}>{message.text}</Text>
-        ) : null}
-
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color="#6750A4" />
-            <Text style={styles.helpText}>Đang tải dữ liệu admin...</Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            {activeTab === 'settings' && (
-              <AdminSettings
-                heartbeatSeconds={heartbeatSeconds}
-                onChangeHeartbeat={setHeartbeatSeconds}
-                onSave={saveHeartbeat}
-                saving={savingKey === 'heartbeat'}
-              />
-            )}
-            {activeTab === 'content' && (
-              <AdminContent
-                ref={adminContentRef}
-                sections={sections}
-                savingKey={savingKey}
-                onSetStatus={setStatus}
-                onSaveSection={handleSaveSection}
-                onCreateSection={handleCreateSection}
-                onDeleteSection={handleDeleteSection}
-                onSaveUnit={handleSaveUnit}
-                onCreateUnit={handleCreateUnit}
-                onDeleteUnit={handleDeleteUnit}
-                onSaveExercise={handleSaveExercise}
-                onCreateExercise={handleCreateExercise}
-                onDeleteExercise={handleDeleteExercise}
-              />
-            )}
-            {activeTab === 'users' && (
-              <AdminUsers
-                users={users}
-                passwordByUserId={passwordByUserId}
-                onPasswordChange={(id, pw) => setPasswordByUserId((c) => ({ ...c, [id]: pw }))}
-                onSavePassword={handleSavePassword}
-                onResetProgress={handleResetProgress}
-                savingKey={savingKey}
-              />
-            )}
-          </ScrollView>
-        )}
-      </SafeAreaView>
-    </AdminGuard>
+      {/* Bottom tab bar */}
+      <View style={[styles.tabBar, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
+        {TABS.map((t) => (
+          <TouchableOpacity
+            key={t.key}
+            style={styles.tabItem}
+            onPress={() => setActiveTab(t.key)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.tabIcon, activeTab === t.key && styles.tabIconActive]}>{t.icon}</Text>
+            <Text style={[styles.tabLabel, { color: activeTab === t.key ? '#1cb0f6' : theme.textSecondary }]}>{t.label}</Text>
+            {activeTab === t.key && <View style={styles.tabDot} />}
+          </TouchableOpacity>
+        ))}
+      </View>
+    </SafeAreaView>
   );
 }
 
+const tab = StyleSheet.create({
+  card: { borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 14 },
+  cardTitle: { fontSize: 15, fontWeight: 'bold', marginBottom: 14 },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  scoreIcon: { fontSize: 36 },
+  scoreValue: { fontSize: 32, fontWeight: 'bold' },
+  scoreLabel: { fontSize: 13 },
+  searchRow: { padding: 12, borderBottomWidth: 1, gap: 8 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 9, gap: 8 },
+  filterRow: { flexDirection: 'row', gap: 8 },
+  filterBtn: { flex: 1, paddingVertical: 7, borderRadius: 12, borderWidth: 1.5, borderColor: '#e5e5e5', alignItems: 'center' },
+  filterBtnActive: { backgroundColor: '#1cb0f6', borderColor: '#1cb0f6' },
+  filterBtnText: { fontSize: 12, fontWeight: '600', color: '#afafaf' },
+  userCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, borderWidth: 1, padding: 14, gap: 12 },
+  userAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#e8f4fd', justifyContent: 'center', alignItems: 'center' },
+  userName: { fontSize: 15, fontWeight: 'bold' },
+  userEmail: { fontSize: 12, marginTop: 2 },
+  userStats: { fontSize: 11, marginTop: 4 },
+  adminBadge: { backgroundColor: '#CE82FF', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  adminBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  lessonCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, borderWidth: 1, padding: 14, gap: 10 },
+  lessonTitle: { fontSize: 14, fontWeight: 'bold' },
+  lessonSection: { fontSize: 11, marginTop: 2 },
+  lessonMeta: { fontSize: 11, marginTop: 4 },
+  publishBadge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  publishText: { fontSize: 12, fontWeight: '600' },
+  periodRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  periodBtn: { flex: 1, paddingVertical: 10, borderRadius: 14, borderWidth: 1.5, borderColor: '#e5e5e5', alignItems: 'center' },
+  periodBtnActive: { backgroundColor: '#1cb0f6', borderColor: '#1cb0f6' },
+  periodText: { fontSize: 12, fontWeight: '600', color: '#afafaf' },
+  revenueCard: { borderRadius: 20, borderWidth: 1, padding: 20, marginBottom: 14, alignItems: 'center' },
+  revenueLabel: { fontSize: 14 },
+  revenueValue: { fontSize: 36, fontWeight: 'bold', color: '#1cb0f6', marginVertical: 6 },
+  revenueSub: { fontSize: 12 },
+  profileCard: { borderRadius: 22, borderWidth: 1, padding: 20, alignItems: 'center', marginBottom: 16 },
+  profileAvatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#e8f4fd', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  profileName: { fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
+  profileEmail: { fontSize: 13, marginBottom: 10 },
+  profileRoleBadge: { backgroundColor: '#1cb0f6', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 4 },
+  profileRoleText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  menuSection: { borderRadius: 20, borderWidth: 1, overflow: 'hidden', marginBottom: 16 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  menuItemIcon: { fontSize: 20, width: 30 },
+  menuItemLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
+  logoutBtn: { backgroundColor: '#ff4b4b', borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
+  logoutText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+});
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFBFE' },
-  centerScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#FFFBFE' },
-  blockedTitle: { marginTop: 16, fontSize: 20, fontWeight: '800', color: '#1D1B20', textAlign: 'center' },
-  blockedText: { marginTop: 8, fontSize: 14, lineHeight: 20, color: '#625B71', textAlign: 'center' },
-  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  eyebrow: { fontSize: 12, fontWeight: '800', color: '#6750A4', letterSpacing: 1.6 },
-  title: { marginTop: 2, fontSize: 28, fontWeight: '900', color: '#1D1B20' },
-  logoutButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F9DEDC', alignItems: 'center', justifyContent: 'center' },
-  tabBar: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 12 },
-  tabItem: { minHeight: 48, flex: 1, borderRadius: 16, backgroundColor: '#E7E0EC', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
-  activeTab: { backgroundColor: '#6750A4' },
-  tabText: { fontSize: 12, fontWeight: '800', color: '#625B71' },
-  activeTabText: { color: '#fff' },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  message: { marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 16, fontWeight: '700', lineHeight: 18 },
-  errorMessage: { color: '#B3261E', backgroundColor: '#F9DEDC' },
-  successMessage: { color: '#146C2E', backgroundColor: '#DDF8E7' },
-  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  helpText: { fontSize: 13, lineHeight: 20, color: '#625B71', marginBottom: 10 },
-  primaryButton: { minHeight: 48, marginTop: 14, borderRadius: 16, backgroundColor: '#6750A4', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '900' },
-  secondaryButton: { minHeight: 48, borderRadius: 16, backgroundColor: '#EADDFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 },
-  secondaryButtonText: { color: '#4F378B', fontSize: 14, fontWeight: '900' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  backButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1 },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
+  },
+  backBtn: { width: 60 },
+  backText: { fontSize: 15, fontWeight: '600' },
+  topCenter: { alignItems: 'center' },
+  topTitle: { fontSize: 17, fontWeight: 'bold' },
+  tabBar: {
+    flexDirection: 'row', borderTopWidth: 1,
+    paddingBottom: 4, paddingTop: 6,
+  },
+  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  tabIcon: { fontSize: 20, opacity: 0.5 },
+  tabIconActive: { opacity: 1 },
+  tabLabel: { fontSize: 10, marginTop: 2, fontWeight: '600' },
+  tabDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#1cb0f6', marginTop: 2 },
 });

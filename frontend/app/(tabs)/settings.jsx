@@ -1,268 +1,143 @@
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
-import { changeCurrentUserPassword, updateUser } from '@/services/api';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import {
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function SettingsScreen() {
+const MenuItem = ({ icon, label, onPress, theme, danger = false, badge }) => (
+  <TouchableOpacity
+    style={[styles.menuItem, { borderBottomColor: theme.border }]}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
+    <View style={styles.menuLeft}>
+      <Text style={styles.menuIcon}>{icon}</Text>
+      <Text style={[styles.menuLabel, { color: danger ? '#ff4b4b' : theme.text }]}>{label}</Text>
+    </View>
+    <View style={styles.menuRight}>
+      {badge ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : null}
+      {!danger && <Text style={[styles.chevron, { color: theme.textSecondary }]}>›</Text>}
+    </View>
+  </TouchableOpacity>
+);
+
+export default function MenuScreen() {
   const router = useRouter();
-  const { user, logout, refreshUser } = useAuth();
-  const { isDark, toggleTheme, theme } = useTheme();
-
-  // Edit profile states
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [profileMessage, setProfileMessage] = useState({ type: '', text: '' });
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
-
-  // Sound toggle state
-  const [soundEnabled, setSoundEnabled] = useState(true);
-
-  const openEditProfile = () => {
-    setEditName(user?.name || '');
-    setProfileMessage({ type: '', text: '' });
-    setIsEditing(true);
-  };
-
-  const handleSaveProfile = async () => {
-    if (!editName.trim()) {
-      setProfileMessage({ type: 'error', text: 'Tên không được để trống.' });
-      return;
-    }
-    setSaving(true);
-    setProfileMessage({ type: '', text: '' });
-    const { error } = await updateUser({
-      name: editName.trim(),
-      age: user.age,
-      avatar: user.avatar,
-    });
-    setSaving(false);
-
-    if (error) {
-      setProfileMessage({ type: 'error', text: error });
-      return;
-    }
-
-    await refreshUser();
-    setProfileMessage({ type: 'success', text: 'Cập nhật hồ sơ thành công.' });
-    setTimeout(() => setIsEditing(false), 600);
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword) {
-      setPasswordMessage({ type: 'error', text: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.' });
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPasswordMessage({ type: 'error', text: 'Mật khẩu mới phải có ít nhất 6 ký tự.' });
-      return;
-    }
-
-    setChangingPassword(true);
-    setPasswordMessage({ type: '', text: '' });
-    const { error } = await changeCurrentUserPassword(currentPassword, newPassword);
-    setChangingPassword(false);
-
-    if (error) {
-      setPasswordMessage({ type: 'error', text: error });
-      return;
-    }
-
-    setCurrentPassword('');
-    setNewPassword('');
-    setPasswordMessage({ type: 'success', text: 'Đổi mật khẩu thành công.' });
-  };
+  const { user, logout } = useAuth();
+  const { theme } = useTheme();
+  const { t } = useLanguage();
 
   const handleLogout = () => {
     Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
+      t('logout_confirm_title'),
+      t('logout_confirm_msg'),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('logout_cancel'), style: 'cancel' },
         {
-          text: 'Đăng xuất',
+          text: t('logout'),
           style: 'destructive',
           onPress: async () => {
             await logout();
             router.replace('/');
           },
         },
-      ],
+      ]
     );
   };
 
   if (!user) {
     return (
-      <SafeAreaView style={[styles.container, styles.centerState, { backgroundColor: theme.background }]}> 
-        <Text style={[styles.stateTitle, { color: theme.text }]}>Chưa có phiên đăng nhập</Text>
-        <Text style={[styles.stateText, { color: theme.textSecondary }]}>Vui lòng đăng nhập lại để chỉnh sửa cài đặt tài khoản.</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>{t('no_session')}</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.headerSection}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Cài đặt</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.scroll}>
 
-        {/* ============ EDIT PROFILE SECTION ============ */}
-        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Hồ sơ cá nhân</Text>
-            {!isEditing && (
-              <TouchableOpacity onPress={openEditProfile} style={styles.editBtn}>
-                <Text style={styles.editBtnText}>Sửa</Text>
-              </TouchableOpacity>
-            )}
+        {/* Profile card */}
+        <View style={[styles.profileCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarEmoji}>{user.avatar || '🐣'}</Text>
           </View>
-
-          {profileMessage.text ? (
-            <Text style={[styles.inlineMessage, profileMessage.type === 'error' ? styles.errorText : styles.successText]}>{profileMessage.text}</Text>
-          ) : null}
-
-          {isEditing ? (
-            <View style={styles.editForm}>
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Tên hiển thị</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Nhập tên"
-                placeholderTextColor={theme.textSecondary}
-              />
-
-              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Email</Text>
-              <View style={[styles.readonlyField, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
-                <Text style={[styles.readonlyValue, { color: theme.text }]}>{user.email || '—'}</Text>
-              </View>
-
-              <View style={styles.editBtnRow}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.cancelBtn]}
-                  onPress={() => { setProfileMessage({ type: '', text: '' }); setIsEditing(false); }}
-                >
-                  <Text style={styles.cancelBtnText}>Hủy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.saveBtn, saving && styles.disabledBtn]}
-                  onPress={handleSaveProfile}
-                  disabled={saving}
-                >
-                  <Text style={styles.saveBtnText}>
-                    {saving ? 'Đang lưu...' : 'Lưu'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, { color: theme.text }]}>{user.name}</Text>
+            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>{user.email}</Text>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelText}>Level {user.level || 1}</Text>
             </View>
-          ) : (
-            <View>
-              <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Tên</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>{user.name}</Text>
-              </View>
-              <View style={[styles.infoRow, { borderBottomColor: 'transparent' }]}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Email</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>{user.email || '—'}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* ============ CHANGE PASSWORD SECTION ============ */}
-        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}> 
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Đổi mật khẩu</Text>
-          </View>
-          {passwordMessage.text ? (
-            <Text style={[styles.inlineMessage, passwordMessage.type === 'error' ? styles.errorText : styles.successText]}>{passwordMessage.text}</Text>
-          ) : null}
-          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Mật khẩu hiện tại</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            placeholder="Nhập mật khẩu hiện tại"
-            placeholderTextColor={theme.textSecondary}
-            secureTextEntry
-          />
-          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Mật khẩu mới</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="Ít nhất 6 ký tự"
-            placeholderTextColor={theme.textSecondary}
-            secureTextEntry
-          />
-          <TouchableOpacity
-            style={[styles.savePasswordBtn, changingPassword && styles.disabledBtn]}
-            onPress={handleChangePassword}
-            disabled={changingPassword}
-          >
-            <Text style={styles.saveBtnText}>{changingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ============ PREFERENCES SECTION ============ */}
-        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 15 }]}>Tùy chỉnh</Text>
-
-          {/* Sound Toggle */}
-          <View style={[styles.preferenceRow, { borderBottomColor: theme.border }]}>
-            <View style={styles.preferenceInfo}>
-              <Text style={[styles.preferenceLabel, { color: theme.text }]}>Âm thanh</Text>
-              <Text style={[styles.preferenceDesc, { color: theme.textSecondary }]}>Bật/tắt hiệu ứng âm thanh</Text>
-            </View>
-            <Switch
-              value={soundEnabled}
-              onValueChange={setSoundEnabled}
-              trackColor={{ false: '#ccc', true: '#CE82FF' }}
-              thumbColor={soundEnabled ? '#fff' : '#f4f3f4'}
-            />
-          </View>
-
-          {/* Dark Mode Toggle */}
-          <View style={[styles.preferenceRow, { borderBottomColor: 'transparent' }]}>
-            <View style={styles.preferenceInfo}>
-              <Text style={[styles.preferenceLabel, { color: theme.text }]}>Chế độ tối</Text>
-              <Text style={[styles.preferenceDesc, { color: theme.textSecondary }]}>Giao diện tối cho mắt thoải mái hơn</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              trackColor={{ false: '#ccc', true: '#CE82FF' }}
-              thumbColor={isDark ? '#fff' : '#f4f3f4'}
-            />
           </View>
         </View>
 
-        {/* ============ LOGOUT BUTTON ============ */}
+        {/* Stats row */}
+        <View style={[styles.statsRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>🔥</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{user.streak || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Streak</Text>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>💎</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{user.gems || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Gems</Text>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>⚡</Text>
+            <Text style={[styles.statValue, { color: theme.text }]}>{user.totalXp || 0}</Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>XP</Text>
+          </View>
+        </View>
+
+        {/* Account section */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('section_account')}</Text>
+        <View style={[styles.menuSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <MenuItem icon="👤" label={t('menu_profile_info')} theme={theme} onPress={() => router.push('/profile-info')} />
+          <MenuItem icon="🔒" label={t('menu_change_password')} theme={theme} onPress={() => router.push('/change-password')} />
+        </View>
+
+        {/* Hoạt động section */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('section_activity')}</Text>
+        <View style={[styles.menuSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <MenuItem icon="📖" label={t('menu_history')} theme={theme} onPress={() => router.push('/history')} />
+          <MenuItem icon="📝" label={t('menu_create_exam')} theme={theme} onPress={() => router.push('/create-exam')} />
+          <MenuItem icon="🔖" label={t('menu_saved_exams')} theme={theme} onPress={() => router.push('/saved-exams')} />
+        </View>
+
+        {/* App section */}
+        <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('section_app')}</Text>
+        <View style={[styles.menuSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <MenuItem icon="🌐" label={t('menu_language')} theme={theme} onPress={() => router.push('/language')} />
+          <MenuItem icon="⚙️" label={t('menu_settings')} theme={theme} onPress={() => router.push('/app-settings')} />
+          <MenuItem icon="❓" label={t('menu_support')} theme={theme} onPress={() => Alert.alert(t('support_title'), t('support_msg'))} />
+        </View>
+
+        {/* Admin section */}
+        {user.role === 'ADMIN' && (
+          <>
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('section_admin')}</Text>
+            <View style={[styles.menuSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <MenuItem icon="🛡️" label={t('menu_admin_panel')} theme={theme} onPress={() => router.push('/admin')} badge="Admin" />
+            </View>
+          </>
+        )}
+
+        {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutBtnText}>Đăng xuất</Text>
+          <Text style={styles.logoutText}>{t('logout')}</Text>
         </TouchableOpacity>
 
-        {/* App info */}
-        <Text style={[styles.versionText, { color: theme.textSecondary }]}>English Learn App v1.0.0</Text>
+        <Text style={[styles.version, { color: theme.textSecondary }]}>MQT Learn v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -270,109 +145,70 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  centerState: { justifyContent: 'center', alignItems: 'center', padding: 24 },
-  stateTitle: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  stateText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  scrollContent: { paddingBottom: 120 },
-  headerSection: {
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10,
+  scroll: { paddingBottom: 100 },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  emptyText: { fontSize: 16, textAlign: 'center' },
+
+  profileCard: {
+    flexDirection: 'row', alignItems: 'center',
+    margin: 16, borderRadius: 20, padding: 18,
+    borderWidth: 1,
   },
-  headerTitle: {
-    fontSize: 28, fontWeight: 'bold',
-  },
-  section: {
-    marginHorizontal: 16, marginTop: 16, borderRadius: 20,
-    padding: 20, borderWidth: 1,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 5,
-  },
-  sectionTitle: {
-    fontSize: 17, fontWeight: 'bold',
-  },
-  editBtn: {
-    backgroundColor: '#CE82FF', paddingHorizontal: 16, paddingVertical: 6,
-    borderRadius: 20,
-  },
-  editBtnText: {
-    color: '#fff', fontWeight: 'bold', fontSize: 13,
-  },
-  unavailableBadge: {
-    borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
-  },
-  unavailableBadgeText: { fontWeight: 'bold', fontSize: 12 },
-  unavailableText: { fontSize: 13, lineHeight: 19, marginTop: 12 },
-  editForm: {
-    marginTop: 15,
-  },
-  inputLabel: {
-    fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 10,
-  },
-  input: {
-    borderWidth: 2, borderRadius: 14, padding: 14, fontSize: 15,
-  },
-  readonlyField: {
-    borderWidth: 2, borderRadius: 14, padding: 14,
-  },
-  readonlyValue: {
-    fontSize: 15,
-  },
-  editBtnRow: {
-    flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18,
-  },
-  actionBtn: {
-    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 14,
-  },
-  cancelBtn: {
-    backgroundColor: '#e5e5e5',
-  },
-  cancelBtnText: {
-    color: '#666', fontWeight: 'bold', fontSize: 14,
-  },
-  saveBtn: {
+  avatarCircle: {
+    width: 68, height: 68, borderRadius: 34,
     backgroundColor: '#CE82FF',
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 16,
   },
-  savePasswordBtn: {
-    minHeight: 48,
-    backgroundColor: '#CE82FF',
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
+  avatarEmoji: { fontSize: 34 },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 18, fontWeight: 'bold', marginBottom: 2 },
+  profileEmail: { fontSize: 13, marginBottom: 8 },
+  levelBadge: {
+    backgroundColor: '#CE82FF', alignSelf: 'flex-start',
+    paddingHorizontal: 12, paddingVertical: 3, borderRadius: 12,
   },
-  disabledBtn: { opacity: 0.6 },
-  saveBtnText: {
-    color: '#fff', fontWeight: 'bold', fontSize: 14,
+  levelText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+
+  statsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 16, marginBottom: 8,
+    borderRadius: 18, borderWidth: 1, paddingVertical: 14,
   },
-  infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14,
-    borderBottomWidth: 1,
+  statItem: { flex: 1, alignItems: 'center' },
+  statEmoji: { fontSize: 20, marginBottom: 4 },
+  statValue: { fontSize: 18, fontWeight: 'bold' },
+  statLabel: { fontSize: 11, marginTop: 2 },
+  statDivider: { width: 1, height: 40 },
+
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
+    marginHorizontal: 20, marginTop: 18, marginBottom: 6,
   },
-  infoLabel: { fontSize: 15 },
-  infoValue: { fontSize: 15, fontWeight: '500' },
-  inlineMessage: { marginTop: 12, padding: 10, borderRadius: 12, fontWeight: '600', lineHeight: 18 },
-  errorText: { color: '#b73535', backgroundColor: '#fff4f4' },
-  successText: { color: '#2f7a12', backgroundColor: '#edffe5' },
-  preferenceRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 14, borderBottomWidth: 1,
+  menuSection: {
+    marginHorizontal: 16, borderRadius: 18, borderWidth: 1,
+    overflow: 'hidden',
   },
-  preferenceInfo: { flex: 1, marginRight: 15 },
-  preferenceLabel: { fontSize: 15, fontWeight: '600' },
-  preferenceDesc: { fontSize: 12, marginTop: 3 },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 15, paddingHorizontal: 18, borderBottomWidth: 1,
+  },
+  menuLeft: { flexDirection: 'row', alignItems: 'center' },
+  menuIcon: { fontSize: 20, width: 32 },
+  menuLabel: { fontSize: 15, fontWeight: '500' },
+  menuRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chevron: { fontSize: 22, fontWeight: '300' },
+  badge: {
+    backgroundColor: '#CE82FF', paddingHorizontal: 10, paddingVertical: 3,
+    borderRadius: 10,
+  },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+
   logoutBtn: {
-    marginHorizontal: 16, marginTop: 25, backgroundColor: '#ff4b4b',
-    borderRadius: 16, padding: 16, alignItems: 'center',
-    ...Platform.select({
-      ios: { shadowColor: '#ff4b4b', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-      android: { elevation: 6 },
-    }),
+    marginHorizontal: 16, marginTop: 24,
+    backgroundColor: '#ff4b4b', borderRadius: 16,
+    paddingVertical: 16, alignItems: 'center',
   },
-  logoutBtnText: {
-    color: '#fff', fontWeight: 'bold', fontSize: 16, letterSpacing: 0.5,
-  },
-  versionText: {
-    textAlign: 'center', fontSize: 12, marginTop: 20, marginBottom: 10,
-  },
+  logoutText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  version: { textAlign: 'center', fontSize: 12, marginTop: 20 },
 });

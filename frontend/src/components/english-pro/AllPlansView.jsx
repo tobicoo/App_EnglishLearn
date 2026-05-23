@@ -12,6 +12,7 @@ const allPlans = [
         savings: 'Tiết kiệm 50%',
         members: 'Tối đa 6 thành viên',
         popular: false,
+        paymentParams: { planName: 'Gia đình 12 tháng', price: '899.000 đ', period: 'năm', planKey: 'yearly' },
     },
     {
         id: 'personal-12',
@@ -22,6 +23,7 @@ const allPlans = [
         savings: 'Tiết kiệm 60%',
         members: null,
         popular: true,
+        paymentParams: { planName: 'Cá nhân 12 tháng', price: '689.000 đ', period: 'năm', planKey: 'yearly' },
     },
     {
         id: 'personal-6',
@@ -32,6 +34,7 @@ const allPlans = [
         savings: 'Tiết kiệm 40%',
         members: null,
         popular: false,
+        paymentParams: { planName: 'Cá nhân 6 tháng', price: '449.000 đ', period: 'năm', planKey: 'yearly' },
     },
     {
         id: 'personal-1',
@@ -42,6 +45,7 @@ const allPlans = [
         savings: null,
         members: null,
         popular: false,
+        paymentParams: { planName: 'Cá nhân 1 tháng', price: '129.000 đ', period: 'tháng', planKey: 'monthly' },
     },
 ];
 
@@ -153,7 +157,10 @@ export default function AllPlansView({ selectedPlan, onSelectPlan, onGoBack }) {
             <View style={styles.bottomCta}>
                 <Pressable
                     style={styles.ctaButton}
-                    onPress={() => { }}
+                    onPress={() => {
+                        const plan = allPlans.find((p) => p.id === selectedPlan) ?? allPlans[1];
+                        router.push({ pathname: '/payment', params: plan.paymentParams });
+                    }}
                 >
                     <Text style={styles.ctaButtonText}>BẮT ĐẦU DÙNG THỬ MIỄN PHÍ</Text>
                 </Pressable>

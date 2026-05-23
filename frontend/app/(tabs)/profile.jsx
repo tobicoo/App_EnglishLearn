@@ -1,5 +1,6 @@
 import { GameConfig } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ProfileScreen() {
   const { user, refreshUser } = useAuth();
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [loadingProfile, setLoadingProfile] = useState(!user);
   const [profileError, setProfileError] = useState('');
   const refreshUserRef = useRef(refreshUser);
@@ -37,9 +39,9 @@ export default function ProfileScreen() {
 
   if (loadingProfile) {
     return (
-      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}> 
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color="#CE82FF" />
-        <Text style={[styles.stateText, { color: theme.textSecondary }]}>Đang tải hồ sơ...</Text>
+        <Text style={[styles.stateText, { color: theme.textSecondary }]}>{t('profile_loading')}</Text>
       </SafeAreaView>
     );
   }
@@ -47,10 +49,10 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <SafeAreaView style={[styles.container, styles.centerState, { backgroundColor: theme.background }]}>
-        <Text style={[styles.stateTitle, { color: theme.text }]}>Chưa có thông tin hồ sơ</Text>
-        <Text style={[styles.stateText, { color: theme.textSecondary }]}>{profileError || 'Vui lòng đăng nhập lại để xem hồ sơ của bạn.'}</Text>
+        <Text style={[styles.stateTitle, { color: theme.text }]}>{t('profile_empty_title')}</Text>
+        <Text style={[styles.stateText, { color: theme.textSecondary }]}>{profileError || t('profile_empty_msg')}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={loadProfile}>
-          <Text style={styles.retryBtnText}>Thử lại</Text>
+          <Text style={styles.retryBtnText}>{t('profile_retry')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -74,7 +76,7 @@ export default function ProfileScreen() {
 
         {/* XP Progress */}
         <View style={styles.xpSection}>
-          <Text style={[styles.xpLabel, { color: theme.textSecondary }]}>XP Progress</Text>
+          <Text style={[styles.xpLabel, { color: theme.textSecondary }]}>{t('profile_xp_progress')}</Text>
           <View style={[styles.xpBarBg, { backgroundColor: theme.border }]}> 
             <View style={[styles.xpBarFill, { width: `${xpProgress}%` }]} />
           </View>
@@ -107,13 +109,13 @@ export default function ProfileScreen() {
 
         {/* Account Info */}
         <View style={[styles.infoSection, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.infoTitle, { color: theme.text }]}>Thông tin tài khoản</Text>
-          <View style={[styles.infoRow, { borderBottomColor: theme.border }]}> 
-            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Email</Text>
+          <Text style={[styles.infoTitle, { color: theme.text }]}>{t('profile_account_info')}</Text>
+          <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>{t('profile_email')}</Text>
             <Text style={[styles.infoValue, { color: theme.text }]}>{user.email || '—'}</Text>
           </View>
-          <View style={[styles.infoRow, { borderBottomColor: theme.border }]}> 
-            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Ngày tham gia</Text>
+          <View style={[styles.infoRow, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>{t('profile_joined')}</Text>
             <Text style={[styles.infoValue, { color: theme.text }]}>
               {user.createdAt
                 ? new Date(user.createdAt).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
