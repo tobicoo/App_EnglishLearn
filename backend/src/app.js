@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
 
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandlers");
+const openapiSpec = require("./openapi");
 const adminRoutes = require("./routes/adminRoutes");
 const authRoutes = require("./routes/authRoutes");
 const contentRoutes = require("./routes/contentRoutes");
@@ -40,6 +42,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api", userRoutes);
 app.use("/api", contentRoutes);
 app.use("/api", quizRoutes);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.use(notFoundHandler);
 app.use(errorHandler);
