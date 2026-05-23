@@ -39,6 +39,5 @@ Thumbs.db
 .idea/
 
 .omo
-backend/db.json
 backend/README.md
 frontend/README.md
